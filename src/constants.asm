@@ -105,6 +105,14 @@
 .label UI_DIVIDER_COL = 19      // column of vertical divider │
 
 // ------------------------------------------------------------
+// Block param type codes (mirrors BlocksData values)
+// ------------------------------------------------------------
+.label PARAM_NONE   = 0
+.label PARAM_COLOR  = 1
+.label PARAM_CHAR   = 2
+.label PARAM_SECS   = 3
+
+// ------------------------------------------------------------
 // Colour indices
 // ------------------------------------------------------------
 .label COL_BLACK      = 0

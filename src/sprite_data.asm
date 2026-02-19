@@ -35,7 +35,7 @@ sprite0_data:
     .byte %00000011,%00000000,%11000000  // row 18: lower legs
     .byte %00000111,%10000000,%11100000  // row 19: feet
     .byte %00000111,%10000000,%11100000  // row 20: feet
-    .byte $00,$00,$00                    // padding byte (64th byte unused)
+    .byte $00                            // padding byte (64th byte — unused)
 
 .assert "Sprite0 is exactly 64 bytes", * - sprite0_data, 64
 .assert "Sprite segment fits", * <= $2800, true

@@ -124,16 +124,21 @@ main_loop:
     jsr Input.input_read_joystick
     jsr Input.input_read_keyboard
 
-    // Dispatch on state
+    // Dispatch on state (use jmp to avoid branch-too-far errors)
     lda zp_state
     cmp #STATE_PALETTE
-    beq state_palette
+    bne !not_pal+
+    jmp state_palette
+!not_pal:
     cmp #STATE_PROGRAM
-    beq state_program
+    bne !not_pgm+
+    jmp state_program
+!not_pgm:
     cmp #STATE_EDIT_PARAM
-    beq state_edit_param
-    // STATE_RUNNING: program is executing via JSR $5000 from codegen;
-    // we never reach here during run — NMI returns us to STATE_PALETTE
+    bne !not_edit+
+    jmp state_edit_param
+!not_edit:
+    // STATE_RUNNING: executing — NMI will flip us back to STATE_PALETTE
     jmp main_loop
 
 // ============================================================
@@ -354,7 +359,8 @@ state_edit_param:
     // write zp_edit_val back to slot param byte
     ldx zp_edit_slot
     lda ProgramStore.slot_stride3_table, x
-    clc : adc #1            // param byte offset
+    clc
+    adc #1                  // param byte offset (stride3 + 1)
     tax
     lda zp_edit_val
     sta ProgramStore.slot_array, x
