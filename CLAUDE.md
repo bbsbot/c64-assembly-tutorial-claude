@@ -28,12 +28,23 @@ java -version && java -jar bin/KickAss.jar
 x64sc --version
 ```
 
+## Session Management (Read This First Every Session)
+
+**Read `skills/session-management/SKILL.md` at the start of every session.**
+
+Key rules:
+- Work in **20-tool-call sprints**, then rest 5 minutes: `bash scripts/session-timer.sh 5`
+- Output a checkpoint line after each sprint: `📊 Checkpoint: ~N calls | Zone: GREEN/YELLOW/RED`
+- On rate limit (429/529): stop, rest 5–30 min with exponential backoff, then retry
+- In RED zone: planning and docs only — no edits. In CRITICAL: halt and write status to PROGRESS.md
+
 ## Skills System (Read Before Acting)
 
 The `/skills/` directory contains expert knowledge modules. **Before performing any task, read the relevant skill file.** This is how the "swarm" maintains expert-level accuracy.
 
 | Skill File | When to Use |
 | :--- | :--- |
+| `skills/session-management/SKILL.md` | Session pacing, rate limits, budget zones |
 | `skills/provisioning/bootstrap.md` | First-time setup or missing tools |
 | `skills/provisioning/doctor.md` | Build failures or stale environment |
 | `skills/testing/vice-automation.md` | Headless VICE testing, golden screenshots, CI |
