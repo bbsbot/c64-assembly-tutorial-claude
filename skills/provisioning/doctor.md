@@ -11,8 +11,20 @@ This skill provides diagnostic logic to troubleshoot and verify the C64 developm
 - **Path Check:** Ensure the `bin/` folder is in the local context.
 
 ### 2. Emulator Connectivity
-- **Check:** Attempt to call `x64sc --version` or check the path defined in `.claude/CLAUDE.md`.
+- **Check:** `x64sc --version 2>/dev/null || echo "VICE not found"`
+- **Common Windows path:** `C:\tools\vice\bin\x64sc.exe` — verify with `ls /c/tools/vice/bin/x64sc.exe`
+- **If missing:** Follow `skills/provisioning/bootstrap.md` §3 (manual download required on Windows — SourceForge is Cloudflare-blocked).
 - **ViceMCP Check:** If the user is using ViceMCP, verify the MCP server is running and responding to a `ping` or `list_devices` command.
+
+### 2a. Automated Test Health
+- **Run the smoke test:** `bash test.sh` (builds, runs headless, pixel-diffs against golden)
+- **Regenerate golden:** `bash test.sh --golden` (use after an intentional visual change)
+- **Key files:**
+  - `build/test_last.png` — screenshot from the most recent test run
+  - `build/test_golden.png` — reference screenshot (commit this to git after approval)
+  - `build/test_vice.log` — full VICE stdout/stderr for post-mortem debugging
+- **Size sanity:** A valid C64 screenshot from VICE is typically 384×272 PNG, ~1–10 KB.
+  If `test_last.png` is < 500 bytes the VICE run likely crashed — check `test_vice.log`.
 
 ### 3. Ultimate 64 / Hardware Link
 - **Check:** If the project is configured for real hardware, attempt to reach the Ultimate 64 IP address.

@@ -18,8 +18,48 @@ When the user requests a setup, perform these steps in order:
 - **Verification:** Run `java -jar bin/KickAss.jar` to ensure it responds.
 
 ### 3. VICE Emulator Setup
-- **Task:** Check if `x64sc` is in the PATH.
-- **Logic:** If not found, ask the user where their VICE installation is located or provide the download link (https://vice-emu.sourceforge.io/). Store the path in the local `.claude/CLAUDE.md` for future sessions.
+
+> **Windows note:** SourceForge's VICE download page is behind Cloudflare and blocks
+> automated HTTP clients (curl, PowerShell `Invoke-WebRequest`, wget). **Do not attempt
+> to download VICE programmatically on Windows — it will always fail with a Cloudflare
+> challenge page.** Instruct the user to download manually instead.
+
+**Automated check:**
+```bash
+x64sc --version 2>/dev/null || echo "VICE not found"
+```
+
+**If VICE is missing — Windows manual install procedure:**
+1. User opens a browser and downloads the latest GTK3 VICE for Windows from:
+   https://vice-emu.sourceforge.io/ → "Download" → GTK3 binaries (zip, ~80 MB)
+2. Extract the zip to `C:\tools\vice\`
+   — the `bin\` subfolder should contain `x64sc.exe`, `x64.exe`, etc.
+3. Add to user PATH (PowerShell, run once):
+   ```powershell
+   $p = [Environment]::GetEnvironmentVariable("Path","User")
+   [Environment]::SetEnvironmentVariable("Path","$p;C:\tools\vice\bin","User")
+   ```
+4. Restart the terminal, then verify:
+   ```bash
+   x64sc --version   # should print VICE version line
+   ```
+
+**If VICE is missing — Linux/macOS:**
+```bash
+# Debian/Ubuntu
+sudo apt install vice
+# macOS
+brew install vice
+```
+
+**Configuring the path for future sessions:**
+Store the resolved path in `.claude/CLAUDE.md` or in `test.sh` via the `VICE` env var:
+```bash
+export VICE=/c/tools/vice/bin/x64sc.exe   # Windows (Git Bash)
+```
+
+**Verification:** `x64sc -warp -limitcycles 1000000 /dev/null 2>/dev/null; echo "exit $?"`
+(exit code 1 is normal when `-limitcycles` fires — that means VICE is working correctly).
 
 ### 4. Folder Scaffolding
 - **Task:** Ensure the following subdirectories exist:

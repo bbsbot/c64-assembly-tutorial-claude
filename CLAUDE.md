@@ -11,12 +11,17 @@ You are a Senior Commodore 64 Development Team. Assist the user in building prof
 ```bash
 # Assemble — use -o (not -odir) to control output path precisely
 java -jar bin/KickAss.jar src/main.asm -o build/main.prg -symbolfile
+# Note: -symbolfile writes main.sym next to the source file; move it to build/ afterwards:
+mv src/main.sym build/main.sym
 
-# Run in emulator
+# Run in emulator (interactive)
 x64sc build/main.prg
 
-# Note: -symbolfile writes main.sym next to the source file; move it to build/ afterwards:
-#   mv src/main.sym build/main.sym
+# Automated headless smoke test (assemble + run + pixel-diff against golden)
+bash test.sh
+
+# Save new golden reference after an intentional visual change
+bash test.sh --golden
 
 # Check environment health
 java -version && java -jar bin/KickAss.jar
@@ -31,6 +36,7 @@ The `/skills/` directory contains expert knowledge modules. **Before performing 
 | :--- | :--- |
 | `skills/provisioning/bootstrap.md` | First-time setup or missing tools |
 | `skills/provisioning/doctor.md` | Build failures or stale environment |
+| `skills/testing/vice-automation.md` | Headless VICE testing, golden screenshots, CI |
 | `skills/collaboration/onboarding.md` | New project or new user session |
 | `skills/assembly-core/kick-assembler.md` | Writing or reviewing any KickAss code |
 | `skills/assembly-core/memory-map.md` | Memory layout decisions |
