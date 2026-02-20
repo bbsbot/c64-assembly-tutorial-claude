@@ -33,6 +33,8 @@ nmi_handler:
     sta zp_state
     lda #0
     sta VIC_SPR_ENA         // disable all sprites
+    lda #$FF
+    sta zp_stop_flag        // signal LOOP BACK to exit on next iteration
     lda #UIRender.STATUS_READY
     jsr UIRender.ui_render_status
     pla
@@ -82,6 +84,7 @@ start:
     sta zp_edit_slot
     sta zp_frame
     sta zp_last_key
+    sta zp_stop_flag
 
     // 8. Draw static chrome
     jsr UIRender.ui_render_frame
@@ -380,6 +383,8 @@ state_edit_param:
 do_run:
     lda zp_slots_used
     beq !run_empty+
+    lda #0
+    sta zp_stop_flag                // clear stop flag before each run
     lda #STATE_RUNNING
     sta zp_state
     lda #UIRender.STATUS_RUNNING

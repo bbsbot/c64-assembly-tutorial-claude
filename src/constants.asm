@@ -22,6 +22,7 @@
 .label zp_cg_ptr_hi   = $0E   // codegen write pointer hi
 .label zp_frame       = $0F   // frame counter (0–255 wrapping)
 .label zp_last_key    = $10   // last key from GETIN
+.label zp_stop_flag   = $11   // set $FF by NMI to break LOOP BACK; cleared by do_run
 
 // Scratch ZP for generated code only (never used by tutor)
 .label zp_gen_lo      = $FE

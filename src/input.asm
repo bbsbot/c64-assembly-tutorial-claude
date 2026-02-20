@@ -38,14 +38,58 @@ input_read_joystick:
 // ============================================================
 // input_read_keyboard
 // Inputs:  none
-// Outputs: zp_last_key = PETSCII char read (0 if none)
+// Outputs: zp_last_key = PETSCII char (0 if none or nav key)
+//          zp_joy_edge |= joystick bit if cursor/space pressed
 //          Z flag set if no key pressed
 // Clobbers: A
+//
+// Cursor keys and SPACE are translated to joystick edge bits
+// so the state machine needs no changes for keyboard support.
+//   CRSR UP=$91  CRSR DOWN=$11  CRSR LEFT=$9D  CRSR RIGHT=$1D
+//   SPACE=$20 → JOY_FIRE
 // ============================================================
 input_read_keyboard:
-    jsr KERNAL_GETIN    // returns PETSCII in A; 0 if no key
+    jsr KERNAL_GETIN        // A = PETSCII or 0 if no key
+    beq !done+              // nothing pressed
+
+    // --- translate cursor/space → joystick edge bits ---
+    cmp #$91                // CRSR UP
+    bne !k1+
+    lda #JOY_UP
+    jmp !inject+
+!k1:
+    cmp #$11                // CRSR DOWN
+    bne !k2+
+    lda #JOY_DOWN
+    jmp !inject+
+!k2:
+    cmp #$9D                // CRSR LEFT
+    bne !k3+
+    lda #JOY_LEFT
+    jmp !inject+
+!k3:
+    cmp #$1D                // CRSR RIGHT
+    bne !k4+
+    lda #JOY_RIGHT
+    jmp !inject+
+!k4:
+    cmp #$20                // SPACE → FIRE
+    bne !not_nav+
+    lda #JOY_FIRE
+!inject:
+    ora zp_joy_edge         // merge into existing edge bits
+    sta zp_joy_edge
+    lda #0
+    sta zp_last_key         // don't expose nav keys as zp_last_key
+    rts
+
+!not_nav:                   // regular key: F1, F3, DEL, etc.
     sta zp_last_key
-    cmp #0              // sets Z if no key
+    rts
+
+!done:
+    lda #0
+    sta zp_last_key
     rts
 
 // ============================================================
