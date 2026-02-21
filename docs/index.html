@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C64 Block Tutor — Scratch-like Assembly on Real Hardware</title>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --accent: #5fbcd3;   /* C64 light-blue */
+      --accent2: #7fdb57;  /* C64 green */
+      --text: #e0e0e0;
+      --muted: #888;
+      --code-bg: #0a0a0a;
+      --red: #e05060;
+      --yellow: #e0c060;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 3rem 2rem 2.5rem;
+      text-align: center;
+    }
+
+    header .badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 0.75rem;
+      background: #001020;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 2px 8px;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 0.6rem;
+    }
+
+    h1 span.accent { color: var(--accent); }
+
+    header p.subtitle {
+      color: var(--muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ── Content ─────────────────────────────────────────── */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    section { margin-bottom: 3.5rem; }
+
+    h2 {
+      font-size: 1.5rem;
+      color: var(--accent2);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+      margin-bottom: 1.2rem;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin: 1.4rem 0 0.5rem;
+    }
+
+    p { margin-bottom: 0.9rem; color: var(--text); }
+
+    ul { margin: 0.4rem 0 0.9rem 1.4rem; }
+    li { margin-bottom: 0.3rem; }
+
+    /* ── Block table ─────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin: 1rem 0 1.5rem;
+    }
+    th {
+      background: var(--surface);
+      color: var(--muted);
+      text-align: left;
+      padding: 0.45rem 0.8rem;
+      border: 1px solid var(--border);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 0.45rem 0.8rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: var(--surface); }
+    td code { color: var(--accent); font-size: 0.88em; }
+
+    /* ── Code blocks ─────────────────────────────────────── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      padding: 1rem 1.2rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      margin: 0.6rem 0 1.2rem;
+    }
+
+    code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; }
+
+    /* syntax colours */
+    .kw  { color: #c586c0; }   /* instructions / mnemonics */
+    .op  { color: var(--accent); }   /* operands / addresses */
+    .cm  { color: var(--muted); font-style: italic; }   /* comments */
+    .lbl { color: var(--accent2); }  /* labels */
+    .num { color: var(--yellow); }   /* numbers */
+    .dir { color: #ce9178; }   /* directives (.pc, .byte …) */
+
+    /* ── Video section ───────────────────────────────────── */
+    .video-wrap {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 1rem 0 1.5rem;
+      aspect-ratio: 714/480;
+      position: relative;
+    }
+
+    .video-wrap video {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── Timeline annotation ─────────────────────────────── */
+    .timeline {
+      list-style: none;
+      margin: 0 0 1.2rem;
+      padding: 0;
+    }
+
+    .timeline li {
+      display: flex;
+      gap: 0.8rem;
+      align-items: baseline;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline li:last-child { border-bottom: none; }
+
+    .ts {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--accent);
+      min-width: 48px;
+      flex-shrink: 0;
+    }
+
+    /* ── Pass pill ───────────────────────────────────────── */
+    .pass-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #0d200d;
+      border: 1px solid var(--accent2);
+      color: var(--accent2);
+      border-radius: 99px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      padding: 0.2rem 0.9rem;
+      margin: 0.5rem 0 1rem;
+    }
+
+    .pass-pill::before { content: "✓"; font-weight: bold; }
+
+    /* ── Info callout ────────────────────────────────────── */
+    .callout {
+      background: #001828;
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      padding: 0.8rem 1rem;
+      font-size: 0.9rem;
+      margin: 1rem 0;
+      color: var(--text);
+    }
+
+    .callout strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+<header>
+  <div class="badge">KickAss&nbsp;v5.25 &nbsp;|&nbsp; VICE x64sc &nbsp;|&nbsp; 6502 Assembly</div>
+  <h1>C64 <span class="accent">Block Tutor</span></h1>
+  <p class="subtitle">
+    A Scratch-like block programming interface for the Commodore 64 —
+    compose visual blocks with a joystick, hit&nbsp;F1, and real 6502 machine
+    code runs on the C64 itself.
+  </p>
+</header>
+
+<main>
+
+<!-- ═════════════════════════ WHAT IS IT ═════════════════════════ -->
+<section>
+  <h2>What is it?</h2>
+  <p>
+    The C64 Block Tutor is a native Commodore&nbsp;64 program written entirely
+    in 6502 assembly (assembled with <strong>KickAss v5.25</strong> and run
+    in the <strong>VICE x64sc</strong> emulator).  It presents beginners with
+    a Scratch-style palette of "blocks" they can arrange into a short program
+    using only a joystick:
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Block</th><th>Parameter</th><th>Machine code generated at $5000</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>SET BORDER</strong></td>
+        <td>color (0–15)</td>
+        <td><code>A9 n 8D 20 D0</code> &nbsp;— LDA #n / STA $D020</td>
+      </tr>
+      <tr>
+        <td><strong>SET BG</strong></td>
+        <td>color (0–15)</td>
+        <td><code>A9 n 8D 21 D0</code> &nbsp;— LDA #n / STA $D021</td>
+      </tr>
+      <tr>
+        <td><strong>PRINT</strong></td>
+        <td>char A–Z</td>
+        <td><code>A9 c 20 D2 FF</code> &nbsp;— LDA #c / JSR $FFD2</td>
+      </tr>
+      <tr>
+        <td><strong>SHOW SPRITE</strong></td>
+        <td>none</td>
+        <td>20 bytes: enable spr0, X=150, Y=130, colour=light-blue</td>
+      </tr>
+      <tr>
+        <td><strong>WAIT</strong></td>
+        <td>seconds (1–9)</td>
+        <td>21 bytes: SEI + 16-bit busy loop using ZP $FE/$FF</td>
+      </tr>
+      <tr>
+        <td><strong>LOOP BACK</strong></td>
+        <td>none</td>
+        <td>7 bytes: check stop-flag, JMP $5000 or fall-through</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Pressing <strong>F1</strong> calls <code>codegen_run</code>, which walks
+    the slot array, emits one block's worth of 6502 opcodes per entry, appends
+    <code>CLI / RTS</code>, then <code>JSR $5000</code> — executing the
+    freshly assembled program right inside the running C64.
+  </p>
+</section>
+
+<!-- ═════════════════════════ ARCHITECTURE ═════════════════════════ -->
+<section>
+  <h2>Architecture</h2>
+
+  <h3>Memory map</h3>
+  <p>
+    Each module is assigned a fixed load address so VICE's symbol monitor can
+    show labels by name:
+  </p>
+  <pre><code><span class="op">$0801</span>  BASIC stub (SYS entry point)
+<span class="op">$0810</span>  <span class="lbl">main.asm</span>        — init, main loop, state machine
+<span class="op">$1000</span>  <span class="lbl">ui_render.asm</span>   — screen-code drawing routines
+<span class="op">$1800</span>  <span class="lbl">input.asm</span>       — joystick edge detection + GETIN
+<span class="op">$2000</span>  <span class="lbl">sprite_data.asm</span> — 64-byte robot bitmap (64-byte aligned → ptr=128)
+<span class="op">$2800</span>  <span class="lbl">blocks_data.asm</span> — block name/param tables
+<span class="op">$3000</span>  <span class="lbl">codegen.asm</span>     — code-generation routines
+<span class="op">$3800</span>  <span class="lbl">strings.asm</span>     — UI strings in screen codes
+<span class="op">$4000</span>  <span class="lbl">program_store.asm</span> — 16-slot × 3-byte array + access helpers
+<span class="op">$5000</span>  <em>(runtime)</em>       — generated machine-code buffer</code></pre>
+
+  <h3>State machine</h3>
+  <pre><code><span class="lbl">STATE_PALETTE    (0)</span>  <span class="cm">; joystick UP/DN moves palette cursor; FIRE adds block</span>
+<span class="lbl">STATE_PROGRAM    (1)</span>  <span class="cm">; joystick UP/DN moves program cursor; FIRE → edit</span>
+<span class="lbl">STATE_EDIT_PARAM (2)</span>  <span class="cm">; LEFT/RIGHT cycles param; FIRE confirms</span></code></pre>
+</section>
+
+<!-- ═════════════════════════ CODE HIGHLIGHTS ═════════════════════════ -->
+<section>
+  <h2>How code generation works</h2>
+  <p>
+    All "compiling" happens in <code>src/codegen.asm</code>.  Here are the
+    three most interesting pieces.
+  </p>
+
+  <h3>1 · The main dispatch loop (<code>codegen_run</code>)</h3>
+  <p>
+    <code>codegen_run</code> points a zero-page pointer pair
+    (<code>zp_cg_ptr_lo/hi</code>) at <code>$5000</code>, emits a leading
+    <code>SEI</code>, then walks every filled slot.  For each slot it reads
+    <code>block_type</code> and <code>param_value</code> out of the slot array
+    at <code>$4000</code>, loads the matching emitter address from a jump
+    table, and does an indirect jump into that emitter.
+  </p>
+  <pre><code><span class="lbl">codegen_run:</span>
+    <span class="kw">lda</span> <span class="op">#&lt;GEN_CODE_BUF</span> <span class="cm">; point cg_ptr at $5000</span>
+    <span class="kw">sta</span> <span class="op">zp_cg_ptr_lo</span>
+    <span class="kw">lda</span> <span class="op">#&gt;GEN_CODE_BUF</span>
+    <span class="kw">sta</span> <span class="op">zp_cg_ptr_hi</span>
+
+    <span class="kw">lda</span> <span class="op">#$78</span>           <span class="cm">; SEI — disable IRQ during user program</span>
+    <span class="kw">jsr</span> <span class="op">emit_byte</span>
+
+<span class="lbl">slot_loop:</span>                        <span class="cm">; X = slot index</span>
+    <span class="kw">cpx</span> <span class="op">zp_slots_used</span>  <span class="cm">; done?</span>
+    <span class="kw">bne</span> <span class="op">slot_continue</span>
+    <span class="kw">jmp</span> <span class="op">slots_done</span>
+<span class="lbl">slot_continue:</span>
+    <span class="kw">lda</span> <span class="op">ProgramStore.slot_stride3_table, x</span>  <span class="cm">; byte offset = x*3</span>
+    <span class="kw">tay</span>
+    <span class="kw">lda</span> <span class="op">ProgramStore.slot_array, y</span>           <span class="cm">; A = block_type</span>
+    <span class="kw">pha</span>
+    <span class="kw">lda</span> <span class="op">ProgramStore.slot_array+1, y</span>         <span class="cm">; A = param_value</span>
+    <span class="kw">tay</span>                                      <span class="cm">; Y = param</span>
+    <span class="kw">pla</span>                                      <span class="cm">; A = block_type</span>
+    <span class="kw">tax</span>
+    <span class="kw">lda</span> <span class="op">emit_table_lo, x</span>   <span class="cm">; indirect jump to emitter</span>
+    <span class="kw">sta</span> <span class="op">zp_gen_lo</span>
+    <span class="kw">lda</span> <span class="op">emit_table_hi, x</span>
+    <span class="kw">sta</span> <span class="op">zp_gen_hi</span>
+    <span class="kw">jmp</span> <span class="op">(zp_gen_lo)</span>
+
+<span class="lbl">slots_done:</span>
+    <span class="kw">lda</span> <span class="op">#$58</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; CLI</span>
+    <span class="kw">lda</span> <span class="op">#$60</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; RTS</span>
+    <span class="kw">jsr</span> <span class="op">GEN_CODE_BUF</span>             <span class="cm">; run it!</span>
+    <span class="kw">rts</span></code></pre>
+
+  <div class="callout">
+    <strong>emit_byte</strong> advances <code>zp_cg_ptr</code> by one after
+    each write.  Every emitter calls it once per opcode/operand byte, so a
+    5-block program might emit 30–40 bytes before the final
+    <code>RTS</code>.
+  </div>
+
+  <h3>2 · SET BORDER / SET BG — five bytes of live 6502</h3>
+  <p>
+    The simplest emitter.  It pushes the literal bytes
+    <code>A9 n 8D 20 D0</code> into the buffer — which is exactly what a
+    human would hand-assemble for <em>LDA #n / STA $D020</em>.  The param
+    (<code>n</code>, color 0–15) is saved to ZP before the first
+    <code>emit_byte</code> call because <code>emit_byte</code> uses
+    <code>LDY #0</code> internally for its indirect store, clobbering Y.
+  </p>
+  <pre><code><span class="lbl">emit_border:</span>
+    <span class="kw">sty</span> <span class="op">zp_gen_lo</span>       <span class="cm">; save param — emit_byte clobbers Y via ldy #0</span>
+    <span class="kw">lda</span> <span class="op">#$A9</span>            <span class="cm">; LDA</span>
+    <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">zp_gen_lo</span>       <span class="cm">; #color (0–15)</span>
+    <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$8D</span>            <span class="cm">; STA abs</span>
+    <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$20</span>            <span class="cm">; lo byte of $D020</span>
+    <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$D0</span>            <span class="cm">; hi byte of $D020</span>
+    <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">jmp</span> <span class="op">next_slot</span>
+
+<span class="cm">; Result at $5000 after SET BORDER color=5 (green):
+;   A9 05 8D 20 D0   →  LDA #5 / STA $D020</span></code></pre>
+
+  <h3>3 · WAIT — a 16-bit timing loop assembled on the fly</h3>
+  <p>
+    WAIT is the most complex emitter.  It calculates
+    <code>outer_hi = n × 3</code> at assembly time (inside <code>emit_wait</code>
+    itself, not at KickAss time), then writes a 21-byte busy-loop into the
+    buffer.  At 985&thinsp;248 Hz PAL, 768 outer passes × 256 inner × 5 cycles
+    ≈ 1 second.  Outer iterations = <code>n × 768</code>, stored as a 16-bit
+    value in ZP <code>$FE/$FF</code>.
+  </p>
+  <pre><code><span class="lbl">emit_wait:</span>                      <span class="cm">; Y = n (1..9)</span>
+    <span class="kw">tya</span>                         <span class="cm">; A = n</span>
+    <span class="kw">sta</span> <span class="op">zp_gen_lo</span>               <span class="cm">; save n</span>
+    <span class="kw">asl</span>                         <span class="cm">; A = n*2</span>
+    <span class="kw">clc</span>
+    <span class="kw">adc</span> <span class="op">zp_gen_lo</span>               <span class="cm">; A = n*3  (= outer_hi, since outer_lo=0)</span>
+    <span class="kw">sta</span> <span class="op">zp_gen_hi</span>               <span class="cm">; remember it for the LDA #hi emit below</span>
+
+    <span class="cm">; Emit: LDA #0 / STA $FE  (outer_lo = 0)</span>
+    <span class="kw">lda</span> <span class="op">#$A9</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$00</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$85</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$FE</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="cm">; Emit: LDA #outer_hi / STA $FF</span>
+    <span class="kw">lda</span> <span class="op">#$A9</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">zp_gen_hi</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; ← n*3 baked in here</span>
+    <span class="kw">lda</span> <span class="op">#$85</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$FF</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="cm">; Emit: LDX #$FF (outer label) / DEX / BNE -3 (inner loop)</span>
+    <span class="kw">lda</span> <span class="op">#$A2</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$FF</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$CA</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; DEX</span>
+    <span class="kw">lda</span> <span class="op">#$D0</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$FD</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; BNE -3 → DEX</span>
+    <span class="cm">; Emit: DEC $FE / BNE outer  +  DEC $FF / BNE outer  (16-bit outer decrement)</span>
+    <span class="kw">lda</span> <span class="op">#$C6</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$FE</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; DEC $FE</span>
+    <span class="kw">lda</span> <span class="op">#$D0</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$F7</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; BNE -9 → LDX #$FF</span>
+    <span class="kw">lda</span> <span class="op">#$C6</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$FF</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; DEC $FF</span>
+    <span class="kw">lda</span> <span class="op">#$D0</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>
+    <span class="kw">lda</span> <span class="op">#$F3</span> : <span class="kw">jsr</span> <span class="op">emit_byte</span>   <span class="cm">; BNE -13 → LDX #$FF</span>
+    <span class="kw">jmp</span> <span class="op">next_slot</span>
+
+<span class="cm">; For n=2 the byte at offset +6 in the buffer will be:
+;   0x06  (= 2*3)  ← the outer_hi baked into the generated code</span></code></pre>
+</section>
+
+<!-- ═════════════════════════ TESTING ═════════════════════════ -->
+<section>
+  <h2>Automated Testing</h2>
+
+  <p>
+    Because the C64 runs inside <strong>VICE</strong>, we can drive it
+    programmatically over its built-in <strong>remote monitor</strong>
+    (TCP port&nbsp;6510).  The test harness
+    (<code>test_interactive.py</code>) connects to that port, injects
+    joystick edges and keystrokes by writing zero-page variables directly,
+    and reads VIC-II registers to verify that the correct machine code was
+    generated.
+  </p>
+
+  <div class="pass-pill">35 / 35 checks passed</div>
+
+  <h3>What the recording below shows</h3>
+  <p>
+    The video is a real-time screen capture of VICE running the full test
+    suite at authentic C64 speed (no warp mode), so you can watch every
+    state transition as it happens:
+  </p>
+
+  <ul class="timeline">
+    <li><span class="ts">0:00</span> VICE launches and loads <code>main.prg</code>.  The tutor draws its chrome: title bar, palette panel, program panel, and help row.</li>
+    <li><span class="ts">~0:05</span> <strong>[1] Init</strong> — test reads <code>zp_state</code> and <code>zp_pal_cursor</code> from zero page to confirm the program booted into PALETTE state.</li>
+    <li><span class="ts">~0:10</span> <strong>[2] Palette cursor</strong> — the harness writes UP/DOWN joystick edges to ZP; the cursor visibly moves through the block list.</li>
+    <li><span class="ts">~0:20</span> <strong>[3] Add blocks</strong> — FIRE injects add "SET BORDER" and "SET BG" blocks to the program panel; <code>zp_slots_used</code> increments to 2.</li>
+    <li><span class="ts">~0:30</span> <strong>[4] Panel switch</strong> — RIGHT/LEFT joystick switches between the palette and program panels; state machine transitions verified.</li>
+    <li><span class="ts">~0:40</span> <strong>[5–6] F1 run</strong> — test injects F1 (<code>zp_last_key = $85</code>), codegen emits bytes at $5000, the user program executes, and VIC-II registers $D020/$D021 change colour on-screen.</li>
+    <li><span class="ts">~1:00</span> <strong>[7] Param editor</strong> — RIGHT joystick increments the border colour from 0 → 2 in the edit panel; FIRE commits it; a second F1 run confirms the new colour appears.</li>
+    <li><span class="ts">~1:20</span> <strong>[8] DEL</strong> — three blocks are added; the middle one is deleted; the test verifies the slot array shifted correctly.</li>
+    <li><span class="ts">~1:40</span> <strong>[9] SHOW SPRITE</strong> — SHOW SPRITE block is added, F1 runs, and the robot sprite appears at (150, 130) in light-blue. The test checks <code>$D015</code>, <code>$D027</code>, and the bitmap at <code>$2000</code>.</li>
+    <li><span class="ts">~2:00</span> <strong>[10–11] LOOP BACK / PRINT</strong> — generated byte sequences are checked against expected opcodes in the buffer at $5000.</li>
+    <li><span class="ts">~2:30</span> <strong>[12] WAIT codegen</strong> — the test verifies the SEI prefix, the <code>outer_hi = n×3</code> byte, and the CLI/RTS epilogue at the correct offsets in the generated code.</li>
+    <li><span class="ts">~2:50</span> <strong>[13] LOOP BACK execution</strong> — a breakpoint is set at $5000; the stop-flag is injected from the monitor; the tutor returns to PALETTE state cleanly instead of looping forever.</li>
+    <li><span class="ts">~3:20</span> VICE exits; <strong>PASS 35/35</strong> is printed.</li>
+  </ul>
+
+  <div class="video-wrap">
+    <video controls preload="metadata">
+      <source src="test_recording_vice.mp4" type="video/mp4" />
+      Your browser does not support HTML5 video.
+      <a href="test_recording_vice.mp4">Download the recording</a>.
+    </video>
+  </div>
+
+  <p style="color:var(--muted);font-size:0.85rem;margin-top:-0.5rem;">
+    714&times;480, 15&thinsp;fps, 3 min 4 s &nbsp;·&nbsp; 0.8&thinsp;MB H.264 MP4 &nbsp;·&nbsp; cropped &amp; trimmed from 2560&times;1440 desktop capture
+  </p>
+
+  <h3>How the test harness injects input</h3>
+  <p>
+    Rather than simulating USB HID events, the harness exploits VICE's
+    remote monitor to write directly to the C64's zero-page variables that
+    the main loop reads on every frame:
+  </p>
+  <pre><code><span class="cm"># Python: write a joystick DOWN edge to ZP $08 (zp_joy_edge)</span>
+<span class="dir">def</span> write_byte(s, addr, val):
+    cmd(s, f<span class="op">"&gt; {addr:04x} {val:02x}"</span>)   <span class="cm"># VICE monitor "fill" command</span>
+
+write_byte(s, <span class="num">0x08</span>, <span class="num">0x02</span>)   <span class="cm"># JOY_DOWN bit → cursor moves down one row</span>
+write_byte(s, <span class="num">0x08</span>, <span class="num">0x10</span>)   <span class="cm"># JOY_FIRE bit → FIRE pressed</span>
+
+<span class="cm"># Inject F1 key to trigger codegen (zp_last_key = $85)</span>
+write_byte(s, <span class="num">0x10</span>, <span class="num">0x85</span>)</code></pre>
+
+  <p>
+    After injection the harness polls <code>zp_state</code> until the main
+    loop has processed the input and returned to its idle condition, then
+    reads the relevant hardware registers to assert correctness.
+  </p>
+</section>
+
+</main>
+</body>
+</html>

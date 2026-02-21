@@ -391,10 +391,9 @@ do_run:
     jsr UIRender.ui_render_status
     jsr Codegen.codegen_run         // compiles and calls JSR $5000
     // After return (from RTS in generated code), back to palette
+    // Note: sprites are NOT disabled here — NMI (RESTORE) handles cleanup
     lda #STATE_PALETTE
     sta zp_state
-    lda #0
-    sta VIC_SPR_ENA
     lda #UIRender.STATUS_READY
     jsr UIRender.ui_render_status
 !run_empty:

@@ -76,9 +76,10 @@ slots_done:
 
 // SET BORDER: LDA #n / STA $D020
 emit_border:
+    sty zp_gen_lo           // save param — emit_byte clobbers Y via ldy #0
     lda #$A9
     jsr emit_byte
-    tya
+    lda zp_gen_lo
     jsr emit_byte
     lda #$8D
     jsr emit_byte
@@ -90,9 +91,10 @@ emit_border:
 
 // SET BG: LDA #n / STA $D021
 emit_bg:
+    sty zp_gen_lo           // save param — emit_byte clobbers Y via ldy #0
     lda #$A9
     jsr emit_byte
-    tya
+    lda zp_gen_lo
     jsr emit_byte
     lda #$8D
     jsr emit_byte
@@ -104,9 +106,10 @@ emit_bg:
 
 // PRINT: LDA #c / JSR $FFD2
 emit_print:
+    sty zp_gen_lo           // save param — emit_byte clobbers Y via ldy #0
     lda #$A9
     jsr emit_byte
-    tya
+    lda zp_gen_lo
     jsr emit_byte
     lda #$20
     jsr emit_byte
@@ -116,7 +119,7 @@ emit_print:
     jsr emit_byte
     jmp next_slot
 
-// SHOW SPRITE: enable spr0 at X=150, Y=130
+// SHOW SPRITE: enable spr0 at X=150, Y=130, colour=14 (light blue)
 emit_sprite:
     // LDA #1 / STA $D015
     lda #$A9
@@ -148,6 +151,17 @@ emit_sprite:
     lda #$8D
     jsr emit_byte
     lda #$01
+    jsr emit_byte
+    lda #$D0
+    jsr emit_byte
+    // LDA #14 / STA $D027  (sprite 0 colour = light blue)
+    lda #$A9
+    jsr emit_byte
+    lda #14
+    jsr emit_byte
+    lda #$8D
+    jsr emit_byte
+    lda #$27
     jsr emit_byte
     lda #$D0
     jsr emit_byte
