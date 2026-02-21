@@ -4,7 +4,9 @@
 
 > A Scratch-like block-programming interface for the Commodore 64 — compose a program with a joystick, press F1, and real 6502 machine code assembles itself and executes inside the running C64.
 
-*35/35 tests passing · [Full write-up with embedded video →](https://bbsbot.github.io/c64-assembly-tutorial-claude)*
+* [Online write-up with demo video](https://bbsbot.github.io/c64-assembly-tutorial-claude)
+* [PDF slides describing the project goals](https://bbsbot.github.io/c64-assembly-tutorial-claude/C64_Visual_Assembly.pdf)
+* [Video overview of project goals](https://bbsbot.github.io/c64-assembly-tutorial-claude/C64__Joystick_to_AI_Co-Pilot.mp4)
 
 ---
 
