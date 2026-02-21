@@ -1,6 +1,6 @@
-# C64 Block Tutor
-
 [![C64 Block Tutor Architectural Diagram](docs/c64dev-how-it-works.png)
+
+# C64 Block Tutor
 
 > A Scratch-like block-programming interface for the Commodore 64 — compose a program with a joystick, press F1, and real 6502 machine code assembles itself and executes inside the running C64.
 
