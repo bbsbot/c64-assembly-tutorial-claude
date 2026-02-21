@@ -95,7 +95,15 @@ Implement in **small, testable phases**:
 - `tmp/` is gitignored - ephemeral output only
 - Summaries, reports, test logs go here
 - User can review detailed output after conversation ends
-- Example: `tmp/static-test-report-phase2.txt`
+- **ALWAYS use timestamped filenames**: `tmp/static-test-phase2-$(date +%Y%m%d-%H%M%S).txt`
+- **NEVER overwrite previous reports** - timestamps prevent this
+
+**CRITICAL - Minimize Permission Prompts:**
+- Running 7 separate bash commands = 7 permission prompts = ANNOYING
+- Solution: Write entire test as ONE bash script, execute ONCE
+- Pattern: Create `tmp/run-static-tests.sh`, chmod +x, run once
+- OR: Generate entire report in single heredoc, write once
+- Goal: 1 test run = 1-2 permission prompts MAX (not 7+)
 
 ```bash
 # 1. Clean build from scratch
@@ -145,16 +153,111 @@ git status
 
 **If ANY check fails:** Fix before committing.
 
-**After all checks pass:** Write summary to `tmp/static-test-report-<phase>.txt`
+**After all checks pass:** Write summary to timestamped file in tmp/
 
-Example output file structure:
+---
+
+## How to Run Static Tests (Minimize Permission Prompts)
+
+**❌ WRONG WAY (7+ permission prompts):**
+```bash
+# DON'T DO THIS - each echo/cat triggers a prompt
+echo "Test 1" >> tmp/report.txt
+run_test_1 >> tmp/report.txt
+echo "Test 2" >> tmp/report.txt
+run_test_2 >> tmp/report.txt
+# ... 7 more times = 14+ prompts!
 ```
-tmp/static-test-report-phase2.txt:
-  - Timestamp
-  - All 7 check results (PASS/FAIL)
-  - Key metrics (file sizes, assert count, memory usage)
-  - Assembly output (last 20 lines)
-  - Next steps or issues found
+
+**✅ RIGHT WAY - Method 1: Single Test Script (2 prompts)**
+```bash
+# Prompt 1: Write the test script
+cat > tmp/run-static-tests.sh <<'SCRIPT'
+#!/bin/bash
+REPORT="tmp/static-test-$(date +%Y%m%d-%H%M%S).txt"
+{
+  echo "=== STATIC TEST REPORT ==="
+  echo "Timestamp: $(date)"
+  echo ""
+
+  # Test 1: Clean build
+  echo "[1/7] Clean build..."
+  rm -f build/main.prg build/main.sym
+  java -jar bin/KickAss.jar src/main.asm -o build/main.prg -symbolfile 2>&1 | tail -5
+  echo "Result: PASS"
+  echo ""
+
+  # Test 2-7: ... all tests here ...
+
+  echo "=== SUMMARY: 7/7 PASSED ==="
+} > "$REPORT"
+echo "Report saved: $REPORT"
+SCRIPT
+
+chmod +x tmp/run-static-tests.sh
+
+# Prompt 2: Run the script
+bash tmp/run-static-tests.sh
+```
+
+**✅ RIGHT WAY - Method 2: Direct Script Execution (1 prompt)**
+```bash
+# Single bash call that does EVERYTHING
+bash -c '
+REPORT="tmp/static-test-$(date +%Y%m%d-%H%M%S).txt"
+{
+  echo "=== STATIC TEST REPORT ==="
+  echo "Test 1: Clean build..."
+  rm -f build/*.prg build/*.sym
+  java -jar bin/KickAss.jar src/main.asm -o build/main.prg -symbolfile 2>&1 | tail -5
+
+  echo "Test 2: Move symbols..."
+  mv src/main.sym build/main.sym
+
+  # ... all 7 tests inline ...
+
+  echo "=== 7/7 PASSED ==="
+} | tee "$REPORT"
+echo ""
+echo "Full report: $REPORT"
+'
+```
+
+**Key Principles:**
+- Combine all tests into ONE bash invocation
+- Use `tee` to show output AND save to file
+- Timestamp the filename automatically
+- User sees summary, can review full report later
+- **1 permission prompt instead of 7+**
+
+---
+
+## Output File Structure
+
+Example: `tmp/static-test-phase2-20260221-113045.txt`
+
+Contents:
+```
+=== STATIC TEST REPORT - Phase N ===
+Timestamp: 2026-02-21 11:30:45
+Branch: feature/assembly-view-toggle
+
+[1/7] Clean build................ ✅ PASS
+[2/7] Assert validation.......... ✅ PASS (0 failed)
+[3/7] Symbol file................ ✅ PASS
+[4/7] Output files............... ✅ PASS (26KB)
+[5/7] Memory constraints......... ✅ PASS (10/10 segments)
+[6/7] Code style................. ✅ PASS
+[7/7] Git sanity................. ✅ PASS
+
+=== SUMMARY: 7/7 PASSED ===
+
+[Full build output]
+... assembler output ...
+
+[Next Steps]
+- Continue to Phase 3
+- Integration test when VICE available
 ```
 
 ---
@@ -162,7 +265,7 @@ tmp/static-test-report-phase2.txt:
 ## Test Output Best Practices
 
 **DO save to tmp/:**
-- ✅ Static test reports
+- ✅ Static test reports (timestamped!)
 - ✅ Build logs (full assembler output)
 - ✅ Memory maps / segment layouts
 - ✅ Performance measurements
@@ -174,11 +277,22 @@ tmp/static-test-report-phase2.txt:
 - ❌ Permanent documentation
 - ❌ Anything that should be versioned
 
+**Filename Requirements:**
+- ✅ ALWAYS timestamp: `static-test-YYYYMMDD-HHMMSS.txt`
+- ✅ Descriptive prefix: `static-test-phase2-...`, `build-log-...`, `memory-map-...`
+- ❌ NEVER generic: `test.txt`, `output.txt`, `report.txt`
+- ❌ NEVER overwrite previous reports
+
 **When to create reports:**
 - After completing each phase
 - After fixing a bug (before/after comparison)
 - When user asks "did it work?" or "show me the results"
 - Before committing (proves testing was done)
+
+**How many permission prompts:**
+- Target: 1-2 prompts for entire test suite
+- Actual: Use single bash script or inline heredoc
+- Avoid: Multiple bash calls (7+ prompts = annoying!)
 
 ---
 
