@@ -1,5 +1,5 @@
 // ============================================================
-// main.asm — C64 Block Tutor  v1.0
+// main.asm — C64 Block Tutor  v2.0
 // ============================================================
 // Memory map:
 //   $0801  BASIC Upstart stub
@@ -12,6 +12,9 @@
 //   $3800  strings.asm
 //   $4000  program_store.asm (slot array + routines)
 //   $5000  runtime generated code buffer
+//   $6000  assembly metadata buffer (80 instructions × 6 bytes)
+//   $6800  asm_view.asm (assembly view rendering)
+//   $7000  asm_strings.asm (mnemonic strings, hex conversion)
 // ============================================================
 
 #import "constants.asm"
@@ -154,7 +157,11 @@ main_loop:
     bne !not_edit+
     jmp state_edit_param
 !not_edit:
-    // STATE_RUNNING: executing — NMI will flip us back to STATE_PALETTE
+    cmp #STATE_ASM_VIEW
+    bne !not_asm+
+    jmp state_asm_view
+!not_asm:
+    // STATE_RUNNING or STATE_ASM_STEPPING: executing — NMI will flip us back to STATE_PALETTE
     jmp main_loop
 
 // ============================================================
@@ -230,6 +237,22 @@ state_palette:
     lda #UIRender.STATUS_CLEARED
     jsr UIRender.ui_render_status
 !no_f3:
+
+    // Keyboard: T → ASSEMBLY VIEW (if instructions exist)
+    lda zp_last_key
+    cmp #$54                // T PETSCII = $54
+    bne !no_t_pal+
+    lda zp_asm_inst_count
+    beq !no_t_pal+          // no instructions generated yet
+    lda #STATE_PALETTE
+    sta zp_asm_prev_state   // save current state
+    lda #0
+    sta zp_asm_cursor       // reset cursor to top
+    lda #STATE_ASM_VIEW
+    sta zp_state
+    jsr AsmView.asm_view_render
+    jmp main_loop
+!no_t_pal:
 
     jmp main_loop
 
@@ -318,6 +341,22 @@ state_program:
     jsr UIRender.ui_render_status
 !no_f3_pgm:
 
+    // T → ASSEMBLY VIEW (if instructions exist)
+    lda zp_last_key
+    cmp #$54                // T PETSCII = $54
+    bne !no_t_pgm+
+    lda zp_asm_inst_count
+    beq !no_t_pgm+
+    lda #STATE_PROGRAM
+    sta zp_asm_prev_state
+    lda #0
+    sta zp_asm_cursor
+    lda #STATE_ASM_VIEW
+    sta zp_state
+    jsr AsmView.asm_view_render
+    jmp main_loop
+!no_t_pgm:
+
     jmp main_loop
 
 // ============================================================
@@ -388,6 +427,104 @@ state_edit_param:
     jsr UIRender.ui_render_status
 !edit_not_fire:
 
+    // T → ASSEMBLY VIEW (if instructions exist)
+    lda zp_last_key
+    cmp #$54                // T PETSCII = $54
+    bne !no_t_edit+
+    lda zp_asm_inst_count
+    beq !no_t_edit+
+    lda #STATE_EDIT_PARAM
+    sta zp_asm_prev_state
+    lda #0
+    sta zp_asm_cursor
+    lda #STATE_ASM_VIEW
+    sta zp_state
+    jsr AsmView.asm_view_render
+    jmp main_loop
+!no_t_edit:
+
+    jmp main_loop
+
+// ============================================================
+// STATE_ASM_VIEW handler
+// ============================================================
+state_asm_view:
+    // UP → scroll up
+    lda #JOY_UP
+    jsr Input.input_joy_pressed
+    beq !asm_not_up+
+    lda zp_asm_cursor
+    beq !asm_not_up+            // already at top
+    dec zp_asm_cursor
+    jsr AsmView.asm_view_render
+!asm_not_up:
+
+    // DOWN → scroll down
+    lda #JOY_DOWN
+    jsr Input.input_joy_pressed
+    beq !asm_not_dn+
+    lda zp_asm_cursor
+    clc
+    adc #17                     // cursor + visible lines
+    cmp zp_asm_inst_count       // at end?
+    bcs !asm_not_dn+            // can't scroll further
+    inc zp_asm_cursor
+    jsr AsmView.asm_view_render
+!asm_not_dn:
+
+    // T → return to previous state
+    lda zp_last_key
+    cmp #$54                    // T PETSCII = $54
+    bne !no_t_asm+
+    lda zp_asm_prev_state
+    sta zp_state
+    // Re-render the previous state's UI
+    cmp #STATE_PALETTE
+    bne !not_pal_ret+
+    jsr UIRender.ui_clear_screen
+    jsr UIRender.ui_render_frame
+    jsr UIRender.ui_render_palette
+    jsr UIRender.ui_render_program
+    jsr UIRender.ui_render_value_bar
+    lda #UIRender.STATUS_READY
+    jsr UIRender.ui_render_status
+    jmp main_loop
+!not_pal_ret:
+    cmp #STATE_PROGRAM
+    bne !not_pgm_ret+
+    jsr UIRender.ui_clear_screen
+    jsr UIRender.ui_render_frame
+    jsr UIRender.ui_render_palette
+    jsr UIRender.ui_render_program
+    jsr UIRender.ui_render_value_bar
+    lda #UIRender.STATUS_READY
+    jsr UIRender.ui_render_status
+    jmp main_loop
+!not_pgm_ret:
+    cmp #STATE_EDIT_PARAM
+    bne !no_t_asm+
+    jsr UIRender.ui_clear_screen
+    jsr UIRender.ui_render_frame
+    jsr UIRender.ui_render_palette
+    jsr UIRender.ui_render_program
+    jsr UIRender.ui_render_value_bar
+    lda #UIRender.STATUS_EDITING
+    jsr UIRender.ui_render_status
+!no_t_asm:
+
+    // F1 → re-run program
+    lda zp_last_key
+    cmp #$85                    // F1 PETSCII = $85
+    bne !no_f1_asm+
+    jsr do_run
+    // After run, return to assembly view
+    lda #STATE_ASM_VIEW
+    sta zp_state
+    lda #0
+    sta zp_asm_cursor           // reset to top
+    jsr AsmView.asm_view_render
+!no_f1_asm:
+
     jmp main_loop
 
 // ============================================================
@@ -422,3 +559,5 @@ do_run:
 #import "codegen.asm"
 #import "strings.asm"
 #import "program_store.asm"
+#import "asm_strings.asm"
+#import "asm_view.asm"
