@@ -6,7 +6,7 @@
 
 * [Online write-up with demo video](https://bbsbot.github.io/c64-assembly-tutorial-claude)
 * [PDF slides describing the project goals](docs/C64_Visual_Assembly.pdf)
-* [Video overview of project goals](docs/C64__Joystick_to_AI_Co-Pilot.mp4)
+* [Video overview of project goals](https://bbsbot.github.io/c64-assembly-tutorial-claude/C64__Joystick_to_AI_Co-Pilot.mp4)
 
 ---
 
