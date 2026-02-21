@@ -88,7 +88,10 @@ The `/skills/` directory contains expert knowledge modules. **Before performing 
 /build      — Compiled .prg and .d64 output (auto-generated)
 /bin        — KickAss.jar (downloaded during bootstrap)
 /skills     — Expert knowledge modules (Claude reads these)
+/tmp        — Ephemeral test reports, logs (gitignored, NOT committed)
 ```
+
+**IMPORTANT:** When running tests or generating summaries, **save output to `tmp/`** so the user can review detailed results after the conversation. Example: `tmp/static-test-report-phase2.txt`
 
 ## New Session Onboarding
 

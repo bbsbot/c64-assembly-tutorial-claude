@@ -91,6 +91,12 @@ Implement in **small, testable phases**:
 
 **Run these checks BEFORE committing:**
 
+**IMPORTANT:** Save test output to `tmp/` for user review:
+- `tmp/` is gitignored - ephemeral output only
+- Summaries, reports, test logs go here
+- User can review detailed output after conversation ends
+- Example: `tmp/static-test-report-phase2.txt`
+
 ```bash
 # 1. Clean build from scratch
 rm -f build/main.prg build/main.sym
@@ -138,6 +144,41 @@ git status
 - ✅ No unexpected files modified
 
 **If ANY check fails:** Fix before committing.
+
+**After all checks pass:** Write summary to `tmp/static-test-report-<phase>.txt`
+
+Example output file structure:
+```
+tmp/static-test-report-phase2.txt:
+  - Timestamp
+  - All 7 check results (PASS/FAIL)
+  - Key metrics (file sizes, assert count, memory usage)
+  - Assembly output (last 20 lines)
+  - Next steps or issues found
+```
+
+---
+
+## Test Output Best Practices
+
+**DO save to tmp/:**
+- ✅ Static test reports
+- ✅ Build logs (full assembler output)
+- ✅ Memory maps / segment layouts
+- ✅ Performance measurements
+- ✅ Debug traces
+
+**DON'T save to tmp/:**
+- ❌ Source code or patches
+- ❌ Binary files (.prg, .d64)
+- ❌ Permanent documentation
+- ❌ Anything that should be versioned
+
+**When to create reports:**
+- After completing each phase
+- After fixing a bug (before/after comparison)
+- When user asks "did it work?" or "show me the results"
+- Before committing (proves testing was done)
 
 ---
 
