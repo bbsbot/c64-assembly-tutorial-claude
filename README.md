@@ -4,7 +4,7 @@
 
 [![C64 Block Tutor — click to watch the demo](docs/preview.png)](docs/test_recording_vice.mp4)
 
-*35/35 tests passing · [Full write-up with embedded video →](docs/index.html)*
+*35/35 tests passing · [Full write-up with embedded video →](https://bbsbot.github.io/c64-assembly-tutorial-claude)*
 
 ---
 
@@ -31,7 +31,7 @@ Pressing **F1** walks the slot array, emits one block's worth of 6502 opcodes pe
 
 The recording shows the full automated test suite running at real C64 speed (no warp mode). All 35/35 checks pass.
 **[Download / watch · `docs/test_recording_vice.mp4` · 0.8 MB · 3 min 4 s](docs/test_recording_vice.mp4)**
-See [docs/index.html](docs/index.html) for a timestamped walkthrough of every test group.
+See [bbsbot.github.io/c64-assembly-tutorial-claude](https://bbsbot.github.io/c64-assembly-tutorial-claude) for a timestamped walkthrough of every test group.
 
 ---
 
