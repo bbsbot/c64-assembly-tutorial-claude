@@ -2,9 +2,9 @@
 
 > A Scratch-like block-programming interface for the Commodore 64 — compose a program with a joystick, press F1, and real 6502 machine code assembles itself and executes inside the running C64.
 
-https://github.com/user-attachments/assets/placeholder
+[![C64 Block Tutor — click to watch the demo](docs/preview.png)](docs/test_recording_vice.mp4)
 
-*(See [`docs/index.html`](docs/index.html) for the full write-up with embedded demo video and annotated assembly listings.)*
+*35/35 tests passing · [Full write-up with embedded video →](docs/index.html)*
 
 ---
 
@@ -27,9 +27,11 @@ Pressing **F1** walks the slot array, emits one block's worth of 6502 opcodes pe
 
 ## Demo
 
-![Demo recording](docs/test_recording_vice.mp4)
+[![Watch the demo](docs/preview.png)](docs/test_recording_vice.mp4)
 
-The recording shows the full automated test suite running at real C64 speed (no warp mode). All 35/35 checks pass. See [docs/index.html](docs/index.html) for a timestamped walkthrough of every test group.
+The recording shows the full automated test suite running at real C64 speed (no warp mode). All 35/35 checks pass.
+**[Download / watch · `docs/test_recording_vice.mp4` · 0.8 MB · 3 min 4 s](docs/test_recording_vice.mp4)**
+See [docs/index.html](docs/index.html) for a timestamped walkthrough of every test group.
 
 ---
 
