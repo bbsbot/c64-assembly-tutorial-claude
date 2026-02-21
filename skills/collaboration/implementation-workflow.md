@@ -80,10 +80,64 @@ Implement in **small, testable phases**:
 - Phase 4+: Polish, testing, optimization
 
 **After each phase:**
-1. Assemble and verify
-2. Test manually (if VICE available)
+1. Run static testing (see below)
+2. Stage changes: `git add <files>`
 3. Commit with descriptive message
 4. Update plan document with status
+
+---
+
+## Static Testing (Required After Each Phase)
+
+**Run these checks BEFORE committing:**
+
+```bash
+# 1. Clean build from scratch
+rm -f build/main.prg build/main.sym
+java -jar bin/KickAss.jar src/main.asm -o build/main.prg -symbolfile
+
+# 2. Verify assembly succeeded
+# Expected output:
+#   "Writing prg file: .../build/main.prg"
+#   "Made N asserts, 0 failed"
+#
+# If any asserts fail: STOP, fix the issue
+
+# 3. Move symbol file to build directory
+mv src/main.sym build/main.sym
+
+# 4. Check output files exist and are reasonable size
+ls -lh build/
+# Verify:
+#   - main.prg exists and is >10K (not suspiciously small)
+#   - main.sym exists
+
+# 5. Verify memory constraints (check assembler output)
+# Look for lines like:
+#   "Codegen segment fits=true (true)"
+#   "AsmView segment fits=true (true)"
+# If any segment shows "false": STOP, you exceeded memory limits
+
+# 6. Quick syntax/style check
+# - No tabs in source files (KickAss prefers spaces)
+# - All functions have comment headers
+# - No hardcoded magic numbers (use constants)
+
+# 7. Git sanity check
+git status
+# Verify:
+#   - You're on a feature branch (not main)
+#   - Only expected files are modified
+#   - No accidentally staged binaries or temp files
+```
+
+**Pass Criteria:**
+- ✅ Assembly completes with "0 failed"
+- ✅ All segment fit checks are "true"
+- ✅ main.prg exists and is reasonable size
+- ✅ No unexpected files modified
+
+**If ANY check fails:** Fix before committing.
 
 ---
 
@@ -114,6 +168,30 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 - `DOCS` - documentation only
 - `TEST` - test additions/changes
 - `CHORE` - tooling, build, dependencies
+
+---
+
+## Auto-Approved Operations (User Permissions)
+
+**Tier 1: Read-Only (Always Auto-Approved)**
+- `ls`, `pwd`, `cd`, `find`, `file`, `stat`, `git status`, `git log`, `git diff`, `git branch`
+- `Read`, `Glob`, `Grep` tools
+- `java -jar bin/KickAss.jar` (assembly - creates build artifacts only)
+
+**Tier 2: Safe Development (Auto-Approved on Feature Branches)**
+- `git checkout -b feature/*` (create feature branches)
+- `git add <specific files>` (staging changes)
+- `git commit` (local commits)
+- `git stash` / `git stash pop`
+- `mkdir -p build`, `mkdir -p bin`
+- `mv src/*.sym build/*.sym` (moving build artifacts)
+- `Edit` to `src/*.asm` (code changes)
+- `Write` to `docs/PLAN_*.md`, `build/*`
+
+**Always Ask First:**
+- `git checkout main`, `git merge`, `git push`
+- `rm -rf`, `git reset --hard`, `git clean -f`
+- Destructive operations
 
 ---
 
