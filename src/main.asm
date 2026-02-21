@@ -85,6 +85,19 @@ start:
     sta zp_frame
     sta zp_last_key
     sta zp_stop_flag
+    // Init ASM view ZP vars
+    sta zp_asm_cursor
+    sta zp_asm_pc_lo
+    sta zp_asm_pc_hi
+    sta zp_asm_inst_count
+    sta zp_asm_reg_a
+    sta zp_asm_reg_x
+    sta zp_asm_reg_y
+    lda #$FF
+    sta zp_asm_reg_sp       // stack starts at $FF
+    lda #0
+    sta zp_asm_reg_flags
+    sta zp_asm_prev_state
 
     // 8. Draw static chrome
     jsr UIRender.ui_render_frame

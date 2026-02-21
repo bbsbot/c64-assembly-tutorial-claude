@@ -5,7 +5,7 @@
 // ============================================================
 
 // ------------------------------------------------------------
-// Zero Page variables ($02–$10)
+// Zero Page variables ($02–$1B)
 // ------------------------------------------------------------
 .label zp_state       = $02   // current UI state (STATE_*)
 .label zp_pal_cursor  = $03   // palette panel cursor (0–5)
@@ -23,6 +23,18 @@
 .label zp_frame       = $0F   // frame counter (0–255 wrapping)
 .label zp_last_key    = $10   // last key from GETIN
 .label zp_stop_flag   = $11   // set $FF by NMI to break LOOP BACK; cleared by do_run
+
+// Assembly View ZP variables ($12–$1B)
+.label zp_asm_cursor      = $12   // current line in view (0-79)
+.label zp_asm_pc_lo       = $13   // program counter lo (16-bit)
+.label zp_asm_pc_hi       = $14   // program counter hi
+.label zp_asm_inst_count  = $15   // total instructions generated
+.label zp_asm_reg_a       = $16   // shadow register A
+.label zp_asm_reg_x       = $17   // shadow register X
+.label zp_asm_reg_y       = $18   // shadow register Y
+.label zp_asm_reg_sp      = $19   // shadow register SP
+.label zp_asm_reg_flags   = $1A   // shadow register flags
+.label zp_asm_prev_state  = $1B   // state before entering asm view
 
 // Scratch ZP for generated code only (never used by tutor)
 .label zp_gen_lo      = $FE
@@ -59,6 +71,7 @@
 
 .label SLOT_ARRAY     = $4000  // 48 bytes: 16 slots × 3 bytes
 .label GEN_CODE_BUF   = $5000  // runtime generated code lands here
+.label ASM_META_BUF   = $6000  // metadata buffer: 80 instructions × 6 bytes = 480 bytes
 
 // ------------------------------------------------------------
 // State IDs
@@ -67,6 +80,8 @@
 .label STATE_PROGRAM    = 1
 .label STATE_EDIT_PARAM = 2
 .label STATE_RUNNING    = 3
+.label STATE_ASM_VIEW   = 4  // viewing disassembly, scrolling
+.label STATE_ASM_STEPPING = 5  // single-stepping with live registers
 
 // ------------------------------------------------------------
 // Block IDs
@@ -140,3 +155,22 @@
 .label SC_PIPE        = $5D   // │ vertical bar (screen code for Commodore │)
 .label SC_HLINE       = $C0   // ─ horizontal line (screen code)
 .label SC_HLINE_THICK = $C0   // same glyph used for thick divider
+
+// ------------------------------------------------------------
+// Mnemonic IDs for metadata tracking
+// ------------------------------------------------------------
+.label MN_SEI         = 0
+.label MN_CLI         = 1
+.label MN_RTS         = 2
+.label MN_LDA_IMM     = 3   // LDA #n
+.label MN_LDA_ABS     = 4   // LDA abs
+.label MN_LDA_ZP      = 5   // LDA zp
+.label MN_STA_ABS     = 6   // STA abs
+.label MN_STA_ZP      = 7   // STA zp
+.label MN_LDX_IMM     = 8   // LDX #n
+.label MN_LDY_IMM     = 9   // LDY #n
+.label MN_DEX         = 10
+.label MN_DEC_ZP      = 11  // DEC zp
+.label MN_BNE_REL     = 12  // BNE rel
+.label MN_JSR_ABS     = 13  // JSR abs
+.label MN_JMP_ABS     = 14  // JMP abs
