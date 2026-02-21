@@ -1,4 +1,4 @@
-[![C64 Block Tutor Architectural Diagram](docs/c64dev-how-it-works.png)
+![C64 Block Tutor Architectural Diagram](docs/c64dev-how-it-works.png)
 
 # C64 Block Tutor
 
