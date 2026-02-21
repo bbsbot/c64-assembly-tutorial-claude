@@ -38,6 +38,24 @@ Key rules:
 - On rate limit (429/529): stop, rest 5–30 min with exponential backoff, then retry
 - In RED zone: planning and docs only — no edits. In CRITICAL: halt and write status to PROGRESS.md
 
+## Implementation Workflow (CRITICAL - Read Before Any Feature Work)
+
+**NEVER start coding when given a plan. Follow the pre-implementation checklist first.**
+
+**Read `skills/collaboration/implementation-workflow.md` before implementing any feature or plan.**
+
+Mandatory steps when user provides a plan:
+1. ✅ **Save plan document** to `docs/PLAN_<feature-name>.md`
+2. ✅ **Create feature branch**: `git checkout -b feature/<feature-name>`
+3. ✅ **Verify baseline**: Assemble code, check `git status` clean
+4. ✅ **THEN code** in small, testable phases with frequent commits
+
+**Red flags** - STOP if you see these:
+- ❌ User gives plan, you start coding without saving it
+- ❌ `git branch` shows you're on `main`
+- ❌ You're modifying files without a plan document
+- ❌ You "reference" a non-existent plan file (hallucination)
+
 ## Skills System (Read Before Acting)
 
 The `/skills/` directory contains expert knowledge modules. **Before performing any task, read the relevant skill file.** This is how the "swarm" maintains expert-level accuracy.
@@ -45,6 +63,7 @@ The `/skills/` directory contains expert knowledge modules. **Before performing 
 | Skill File | When to Use |
 | :--- | :--- |
 | `skills/session-management/SKILL.md` | Session pacing, rate limits, budget zones |
+| `skills/collaboration/implementation-workflow.md` | **BEFORE implementing any plan or feature** — git workflow, plan docs |
 | `skills/provisioning/bootstrap.md` | First-time setup or missing tools |
 | `skills/provisioning/doctor.md` | Build failures or stale environment |
 | `skills/testing/vice-automation.md` | Headless VICE testing, golden screenshots, CI |
