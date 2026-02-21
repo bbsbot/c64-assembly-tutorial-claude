@@ -27,11 +27,11 @@ Pressing **F1** walks the slot array, emits one block's worth of 6502 opcodes pe
 
 ## Demo
 
-[![Watch the demo](docs/preview.png)](docs/test_recording_vice.mp4)
+[![Watch the demo](docs/preview.png)](https://bbsbot.github.io/c64-assembly-tutorial-claude/test_recording_vice.mp4)
 
 The recording shows the full automated test suite running at real C64 speed (no warp mode). All 35/35 checks pass.
-**[Download / watch · `docs/test_recording_vice.mp4` · 0.8 MB · 3 min 4 s](docs/test_recording_vice.mp4)**
-See [bbsbot.github.io/c64-assembly-tutorial-claude](https://bbsbot.github.io/c64-assembly-tutorial-claude) for a timestamped walkthrough of every test group.
+**[Download / watch · `docs/test_recording_vice.mp4` · 0.8 MB · 3 min 4 s](https://bbsbot.github.io/c64-assembly-tutorial-claude/test_recording_vice.mp4)**
+See the [Github page](https://bbsbot.github.io/c64-assembly-tutorial-claude) for a timestamped walkthrough of every test group.
 
 ---
 
