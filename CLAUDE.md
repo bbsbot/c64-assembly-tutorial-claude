@@ -30,7 +30,7 @@ x64sc --version
 
 ## Session Management (Read This First Every Session)
 
-**Read `skills/session-management/SKILL.md` at the start of every session.**
+**Read `.claude/commands/session-management/SKILL.md` at the start of every session.**
 
 Key rules:
 - Work in **20-tool-call sprints**, then rest 5 minutes: `bash scripts/session-timer.sh 5`
@@ -42,7 +42,7 @@ Key rules:
 
 **NEVER start coding when given a plan. Follow the pre-implementation checklist first.**
 
-**Read `skills/collaboration/implementation-workflow.md` before implementing any feature or plan.**
+**Read `.claude/commands/collaboration/implementation-workflow.md` before implementing any feature or plan.**
 
 Mandatory steps when user provides a plan:
 1. ✅ **Save plan document** to `docs/PLAN_<feature-name>.md`
@@ -58,44 +58,46 @@ Mandatory steps when user provides a plan:
 
 ## Skills System (Read Before Acting)
 
-The `/skills/` directory contains expert knowledge modules. **Before performing any task, read the relevant skill file.** This is how the "swarm" maintains expert-level accuracy.
+The `/.claude/commands/` directory contains expert knowledge modules as slash commands. **Before performing any task, read the relevant skill file.** This is how the "swarm" maintains expert-level accuracy.
 
-| Skill File | When to Use |
-| :--- | :--- |
-| `skills/session-management/SKILL.md` | Session pacing, rate limits, budget zones |
-| `skills/collaboration/implementation-workflow.md` | **BEFORE implementing any plan or feature** — git workflow, plan docs |
-| `skills/provisioning/bootstrap.md` | First-time setup or missing tools |
-| `skills/provisioning/doctor.md` | Build failures or stale environment |
-| `skills/testing/vice-automation.md` | Headless VICE testing, golden screenshots, CI |
-| `skills/collaboration/onboarding.md` | New project or new user session |
-| `skills/assembly-core/kick-assembler.md` | Writing or reviewing any KickAss code |
-| `skills/assembly-core/memory-map.md` | Memory layout decisions |
-| `skills/graphics-vic-ii/raster-timing.md` | Raster interrupts, smooth scroll, FLI |
-| `skills/graphics-vic-ii/sprite-multiplex.md` | Sprite multiplexing |
-| `skills/geos-pro/kernel-api.md` | GEOS application development |
-| `skills/geos-pro/reu-expanded.md` | REU (RAM Expansion Unit) banking |
-| `skills/geos-pro/vlir-management.md` | GEOS VLIR file format |
-| `skills/asset-pipeline/aseprite-bridge.md` | Converting graphics from Aseprite |
-| `skills/asset-pipeline/disk-tools.md` | Creating `.d64` disk images |
-| `skills/communication-bbs/rs232-driver.md` | RS232/modem driver code |
-| `skills/communication-bbs/petscii-at.md` | PETSCII terminal protocols |
+Invoke a skill as a slash command (e.g. `/assembly-core:kick-assembler`) or read it directly from `.claude/commands/<category>/<name>.md`.
+
+| Slash Command | File Path | When to Use |
+| :--- | :--- | :--- |
+| `/session-management:SKILL` | `.claude/commands/session-management/SKILL.md` | Session pacing, rate limits, budget zones |
+| `/collaboration:implementation-workflow` | `.claude/commands/collaboration/implementation-workflow.md` | **BEFORE implementing any plan or feature** — git workflow, plan docs |
+| `/provisioning:bootstrap` | `.claude/commands/provisioning/bootstrap.md` | First-time setup or missing tools |
+| `/provisioning:doctor` | `.claude/commands/provisioning/doctor.md` | Build failures or stale environment |
+| `/testing:vice-automation` | `.claude/commands/testing/vice-automation.md` | Headless VICE testing, golden screenshots, CI |
+| `/collaboration:onboarding` | `.claude/commands/collaboration/onboarding.md` | New project or new user session |
+| `/assembly-core:kick-assembler` | `.claude/commands/assembly-core/kick-assembler.md` | Writing or reviewing any KickAss code |
+| `/assembly-core:memory-map` | `.claude/commands/assembly-core/memory-map.md` | Memory layout decisions |
+| `/graphics-vic-ii:raster-timing` | `.claude/commands/graphics-vic-ii/raster-timing.md` | Raster interrupts, smooth scroll, FLI |
+| `/graphics-vic-ii:sprite-multiplex` | `.claude/commands/graphics-vic-ii/sprite-multiplex.md` | Sprite multiplexing |
+| `/geos-pro:kernel-api` | `.claude/commands/geos-pro/kernel-api.md` | GEOS application development |
+| `/geos-pro:reu-expanded` | `.claude/commands/geos-pro/reu-expanded.md` | REU (RAM Expansion Unit) banking |
+| `/geos-pro:vlir-management` | `.claude/commands/geos-pro/vlir-management.md` | GEOS VLIR file format |
+| `/asset-pipeline:aseprite-bridge` | `.claude/commands/asset-pipeline/aseprite-bridge.md` | Converting graphics from Aseprite |
+| `/asset-pipeline:disk-tools` | `.claude/commands/asset-pipeline/disk-tools.md` | Creating `.d64` disk images |
+| `/communication-bbs:rs232-driver` | `.claude/commands/communication-bbs/rs232-driver.md` | RS232/modem driver code |
+| `/communication-bbs:petscii-at` | `.claude/commands/communication-bbs/petscii-at.md` | PETSCII terminal protocols |
 
 ## Project Structure
 
 ```
-/src        — Assembly source files (.asm, .s)
-/assets     — Graphics (Aseprite/SpritePad), SID music, binary data
-/build      — Compiled .prg and .d64 output (auto-generated)
-/bin        — KickAss.jar (downloaded during bootstrap)
-/skills     — Expert knowledge modules (Claude reads these)
-/tmp        — Ephemeral test reports, logs (gitignored, NOT committed)
+/src              — Assembly source files (.asm, .s)
+/assets           — Graphics (Aseprite/SpritePad), SID music, binary data
+/build            — Compiled .prg and .d64 output (auto-generated)
+/bin              — KickAss.jar (downloaded during bootstrap)
+/.claude/commands — Expert knowledge modules (slash commands)
+/tmp              — Ephemeral test reports, logs (gitignored, NOT committed)
 ```
 
 **IMPORTANT:** When running tests or generating summaries, **save output to `tmp/`** so the user can review detailed results after the conversation. Example: `tmp/static-test-report-phase2.txt`
 
 ## New Session Onboarding
 
-If this is a new session or project, read `skills/collaboration/onboarding.md` and run the 3-question interview to calibrate the coaching style (beginner/intermediate/expert) before generating any code.
+If this is a new session or project, read `.claude/commands/collaboration/onboarding.md` and run the 3-question interview to calibrate the coaching style (beginner/intermediate/expert) before generating any code.
 
 ## KickAss Code Conventions
 
@@ -134,7 +136,7 @@ If this is a new session or project, read `skills/collaboration/onboarding.md` a
 | **VICE** (`x64sc`) | Cycle-accurate emulator for testing |
 | **c1541** | CLI tool (bundled with VICE) for `.d64` disk image management |
 | **c64u-mcp-server** | MCP bridge to deploy `.prg` files to a real Ultimate 64 over the network |
-| **Aseprite** (+ C64 Pixel Plugin) | Sprite/tile graphics, exported via `skills/asset-pipeline/aseprite-bridge.md` |
+| **Aseprite** (+ C64 Pixel Plugin) | Sprite/tile graphics, exported via `/asset-pipeline:aseprite-bridge` |
 
 ## Verification Rule
 

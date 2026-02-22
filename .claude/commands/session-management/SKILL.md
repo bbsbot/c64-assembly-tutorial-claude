@@ -132,7 +132,7 @@ Event types: `SESSION_START`, `SPRINT_COMPLETE`, `REST_START`, `REST_END`, `RATE
 
 ## 6. Claude Code Integration
 
-- This skill is loaded via the `skills/session-management/SKILL.md` entry in CLAUDE.md
+- This skill is loaded via the `.claude/commands/session-management/SKILL.md` entry in CLAUDE.md
 - Sleep/rest uses `bash scripts/session-timer.sh N`
 - After every ~20 tool calls, output a checkpoint line before continuing
 - In this project, a "sprint" maps well to one Phase of the Block Tutor implementation plan
