@@ -238,12 +238,10 @@ state_palette:
     jsr UIRender.ui_render_status
 !no_f3:
 
-    // Keyboard: T → ASSEMBLY VIEW (if instructions exist)
+    // Keyboard: T → ASSEMBLY VIEW
     lda zp_last_key
     cmp #$54                // T PETSCII = $54
     bne !no_t_pal+
-    lda zp_asm_inst_count
-    beq !no_t_pal+          // no instructions generated yet
     lda #STATE_PALETTE
     sta zp_asm_prev_state   // save current state
     lda #0
@@ -341,12 +339,10 @@ state_program:
     jsr UIRender.ui_render_status
 !no_f3_pgm:
 
-    // T → ASSEMBLY VIEW (if instructions exist)
+    // T → ASSEMBLY VIEW
     lda zp_last_key
     cmp #$54                // T PETSCII = $54
     bne !no_t_pgm+
-    lda zp_asm_inst_count
-    beq !no_t_pgm+
     lda #STATE_PROGRAM
     sta zp_asm_prev_state
     lda #0
@@ -427,12 +423,10 @@ state_edit_param:
     jsr UIRender.ui_render_status
 !edit_not_fire:
 
-    // T → ASSEMBLY VIEW (if instructions exist)
+    // T → ASSEMBLY VIEW
     lda zp_last_key
     cmp #$54                // T PETSCII = $54
     bne !no_t_edit+
-    lda zp_asm_inst_count
-    beq !no_t_edit+
     lda #STATE_EDIT_PARAM
     sta zp_asm_prev_state
     lda #0

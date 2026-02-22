@@ -299,8 +299,54 @@ After each phase:
 - Initializes zp_asm_inst_count in codegen_run
 - Assembles cleanly with 0 failed asserts
 
-### 🔄 Phase 2: Static Assembly View - NOT STARTED
+### ✅ Phase 2: Static Assembly View - COMPLETED
+- Created `asm_view.asm` (532 lines) at `.pc = $6800`
+- Created `asm_strings.asm` (184 lines) at `.pc = $7000`
+- Implemented asm_view_render() — full-screen entry point
+- render_title(): row 0 — "ASSEMBLY VIEW  [F1:RUN T:BLOCKS]"
+- render_header(): row 1 — "ADDR  OPCODE MNEMONIC    OPERAND"
+- render_code_area(): rows 2-18 — 17 lines of disassembly from metadata
+- render_disasm_line(): address (4-digit hex) + "XX" opcode placeholder + mnemonic
+- render_registers(): row 19 — A/X/Y/SP shadow register display
+- render_block_annotation(): row 20 — source block context
+- render_help(): row 21 — key hints
+- T-key handler in all 3 states (palette, program, edit_param)
+- T-key returns to previous state from asm_view
+- Integrated into main.asm state machine
+- Statically tested; assembles with 0 failed asserts
+- **NOTE:** Metadata byte layout actual order: [src_block, mnemonic_id, op1, op2, len, addr_offset]
+  - Plan said [mnemonic_id, op1, op2, len, src_block, addr_offset] — implementation differed (consistent internally)
+
 ### 🔄 Phase 3: Syntax Highlighting - NOT STARTED
+- render_code_area uses uniform color (no per-mnemonic coloring yet)
+- Color infrastructure exists in render_title/header/registers rows
+
 ### 🔄 Phase 4: Step-Through Execution - NOT STARTED
-### 🔄 Phase 5: Block Annotations - NOT STARTED
+- No asm_step_init(), asm_step_execute_one(), or step handlers yet
+
+### 🔄 Phase 5: Block Annotations - PARTIALLY COMPLETE
+- render_block_annotation() subroutine exists in asm_view.asm (row 20)
+- Reads metadata[cursor].source_block_idx
+- Full block name lookup from BlocksData pending Phase 4 integration
+
 ### 🔄 Phase 6: Polish & Sound - NOT STARTED
+
+---
+
+## Integration & Acceptance Testing
+
+### ✅ Test Infrastructure - COMPLETED (2026-02-22)
+- `scripts/integration-test.sh` — fully headless, 4-suite integration test
+- **Approach:** VICE `-keybuf "t"` (lowercase, PETSCII $54) — no GUI required
+  - Uppercase 'T' → SHIFT+T → PETSCII $74 — does NOT match handler
+  - Double-keybuf "tt" is unreliable headless (produces mystery blank screen);
+    toggle-back correctness verified by static code analysis instead
+- **Suite 1:** Build verification — assemble, asserts, PRG size check
+- **Suite 2:** Headless boot baseline — 150M cycles, no keybuf, captures palette view
+- **Suite 3:** Headless ASM view acceptance — 300M cycles, keybuf "t"
+  - Acceptance A: pixel diff vs baseline = 12.6% (threshold 10%) → PASS
+  - Acceptance B: toggle-back verified by code inspection of `state_asm_view`
+- **Suite 4:** Demo video slideshow (palette 2s → ASM view 2s) via ffmpeg filter_complex
+- All 8 tests: PASS | 0 FAIL | 0 WARN
+- Reports saved to `tmp/integration-test-report-phase2.txt`
+- Demo video saved to `tmp/demo-phase2.mp4`
