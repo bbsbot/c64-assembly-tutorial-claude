@@ -26,7 +26,7 @@ err()  { echo "  ERR $*"; FAIL=$((FAIL+1)); }
 
 # ── 1. Assemble ──────────────────────────────────────────────
 echo "[1/3] Assembling src/main.asm..."
-BUILD_OUT=$($KICKASS src/main.asm -o "$PRG" -symbolfile 2>&1)
+BUILD_OUT=$($KICKASS src/main.asm -o "$PRG" -symbolfile :SKIP_SPLASH=1 2>&1)
 if echo "$BUILD_OUT" | grep -q "0 failed"; then
   mv src/main.sym "$SYM" 2>/dev/null || true
   ok "build/main.prg assembled cleanly"

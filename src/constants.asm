@@ -158,6 +158,18 @@
 .label SYN_FLOW       = COL_RED       // BNE, JMP
 .label SYN_CURSOR_BG  = COL_GREEN     // cursor line highlight
 
+// ------------------------------------------------------------
+// Splash screen constants
+// ------------------------------------------------------------
+.label SPLASH_BG_COLOR   = COL_BLACK   // global bg color (from converter)
+.label SPLASH_FRAMES     = 150         // ~3 sec at 50 Hz PAL
+
+// Additional VIC-II / CIA registers for bitmap mode
+.label VIC_D011          = $D011       // screen control register 1
+.label VIC_D016          = $D016       // screen control register 2
+.label VIC_D018          = $D018       // memory pointers
+.label CIA2_PORTA        = $DD00       // VIC bank select
+
 // Screen code helpers (screen RAM uses different encoding than PETSCII)
 // Screen code for uppercase A = $01  (PETSCII $41 minus $40)
 // Screen code for space      = $20

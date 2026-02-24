@@ -15,7 +15,12 @@
 //   $6000  assembly metadata buffer (80 instructions × 6 bytes)
 //   $6800  asm_view.asm (assembly view rendering)
 //   $7000  asm_strings.asm (mnemonic strings, hex conversion)
+//   $7400  splash.asm (splash screen display routine)
+//   $8000  splash_data.asm (bitmap data in VIC bank 2)
 // ============================================================
+
+// Build with :SKIP_SPLASH=1 to disable splash (for headless tests)
+.var SKIP_SPLASH = cmdLineVars.containsKey("SKIP_SPLASH") ? cmdLineVars.get("SKIP_SPLASH").asNumber() : 0
 
 #import "constants.asm"
 
@@ -47,6 +52,11 @@ nmi_handler:
 // start — init sequence
 // ============================================================
 start:
+    // Show splash screen (unless SKIP_SPLASH=1)
+    .if (SKIP_SPLASH == 0) {
+        jsr Splash.splash_show
+    }
+
     sei                     // disable IRQ during init
 
     // 1. Clear screen and color RAM
@@ -161,7 +171,11 @@ main_loop:
     bne !not_asm+
     jmp state_asm_view
 !not_asm:
-    // STATE_RUNNING or STATE_ASM_STEPPING: executing — NMI will flip us back to STATE_PALETTE
+    cmp #STATE_ASM_STEPPING
+    bne !not_step+
+    jmp state_asm_stepping
+!not_step:
+    // STATE_RUNNING: executing — NMI will flip us back to STATE_PALETTE
     jmp main_loop
 
 // ============================================================
@@ -519,6 +533,63 @@ state_asm_view:
     jsr AsmView.asm_view_render
 !no_f1_asm:
 
+    // S → enter stepping mode
+    lda zp_last_key
+    cmp #$53                    // S PETSCII = $53
+    bne !no_s_asm+
+    lda zp_asm_inst_count
+    beq !no_s_asm+              // no instructions to step
+    jsr AsmView.asm_step_init
+    lda #STATE_ASM_STEPPING
+    sta zp_state
+!no_s_asm:
+
+    jmp main_loop
+
+// ============================================================
+// STATE_ASM_STEPPING handler
+// S or FIRE → execute one instruction
+// T → return to ASM_VIEW
+// F1 → re-run full program
+// ============================================================
+state_asm_stepping:
+    // S key or FIRE → step one instruction
+    lda zp_last_key
+    cmp #$53                    // S PETSCII
+    beq !do_step+
+    lda #JOY_FIRE
+    jsr Input.input_joy_pressed
+    beq !step_not_fire+
+!do_step:
+    jsr AsmView.asm_step_execute_one
+    // Check if step_rts changed state back to ASM_VIEW
+    lda zp_state
+    cmp #STATE_ASM_STEPPING
+    bne !step_exit+             // state changed, go to main_loop
+!step_not_fire:
+
+    // T → return to ASM_VIEW (stop stepping)
+    lda zp_last_key
+    cmp #$54                    // T PETSCII
+    bne !step_not_t+
+    lda #STATE_ASM_VIEW
+    sta zp_state
+    jsr AsmView.asm_view_render
+!step_not_t:
+
+    // F1 → re-run program
+    lda zp_last_key
+    cmp #$85                    // F1
+    bne !step_not_f1+
+    jsr do_run
+    lda #STATE_ASM_VIEW
+    sta zp_state
+    lda #0
+    sta zp_asm_cursor
+    jsr AsmView.asm_view_render
+!step_not_f1:
+
+!step_exit:
     jmp main_loop
 
 // ============================================================
@@ -555,3 +626,7 @@ do_run:
 #import "program_store.asm"
 #import "asm_strings.asm"
 #import "asm_view.asm"
+.if (SKIP_SPLASH == 0) {
+    #import "splash.asm"
+    #import "splash_data.asm"
+}

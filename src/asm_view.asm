@@ -211,16 +211,22 @@ render_code_area:
     rts
 
 !pad_remaining:
-    // Clear remaining lines with spaces
+    // Clear remaining lines with spaces (40 chars per line)
     lda #SC_SPACE
+    ldy #0
 !pad_loop:
     sta (zp_ptr_lo), y
-    inc zp_ptr_lo
-    bne !+
+    iny
+    cpy #40
+    bne !pad_loop-
+    // Advance screen pointer by 40
+    lda zp_ptr_lo
+    clc
+    adc #40
+    sta zp_ptr_lo
+    bcc !+
     inc zp_ptr_hi
 !:
-    dey
-    bne !pad_loop-
     inx
     cpx #17
     bne !pad_remaining-
@@ -551,7 +557,103 @@ render_registers:
     lda zp_asm_reg_sp
     jsr AsmStrings.render_hex_byte
 
-    // TODO: Render flags [NV-BDIZC]
+    // Render flags " [NV-BDIZC]"
+    lda zp_ptr_lo
+    clc
+    adc #3
+    sta zp_ptr_lo
+    bcc !+
+    inc zp_ptr_hi
+!:
+    // '['
+    lda #$5B
+    ldy #0
+    sta (zp_ptr_lo), y
+    iny
+    // N flag (bit 7)
+    lda zp_asm_reg_flags
+    and #$80
+    bne !flag_n_set+
+    lda #$2D                    // '-'
+    jmp !flag_n_done+
+!flag_n_set:
+    lda #$0E                    // 'N' screen code
+!flag_n_done:
+    sta (zp_ptr_lo), y
+    iny
+    // V flag (bit 6)
+    lda zp_asm_reg_flags
+    and #$40
+    bne !flag_v_set+
+    lda #$2D
+    jmp !flag_v_done+
+!flag_v_set:
+    lda #$16                    // 'V' screen code
+!flag_v_done:
+    sta (zp_ptr_lo), y
+    iny
+    // - (bit 5, always 1, show '-')
+    lda #$2D
+    sta (zp_ptr_lo), y
+    iny
+    // B flag (bit 4)
+    lda zp_asm_reg_flags
+    and #$10
+    bne !flag_b_set+
+    lda #$2D
+    jmp !flag_b_done+
+!flag_b_set:
+    lda #$02                    // 'B' screen code
+!flag_b_done:
+    sta (zp_ptr_lo), y
+    iny
+    // D flag (bit 3)
+    lda zp_asm_reg_flags
+    and #$08
+    bne !flag_d_set+
+    lda #$2D
+    jmp !flag_d_done+
+!flag_d_set:
+    lda #$04                    // 'D' screen code
+!flag_d_done:
+    sta (zp_ptr_lo), y
+    iny
+    // I flag (bit 2)
+    lda zp_asm_reg_flags
+    and #$04
+    bne !flag_i_set+
+    lda #$2D
+    jmp !flag_i_done+
+!flag_i_set:
+    lda #$09                    // 'I' screen code
+!flag_i_done:
+    sta (zp_ptr_lo), y
+    iny
+    // Z flag (bit 1)
+    lda zp_asm_reg_flags
+    and #$02
+    bne !flag_z_set+
+    lda #$2D
+    jmp !flag_z_done+
+!flag_z_set:
+    lda #$1A                    // 'Z' screen code
+!flag_z_done:
+    sta (zp_ptr_lo), y
+    iny
+    // C flag (bit 0)
+    lda zp_asm_reg_flags
+    and #$01
+    bne !flag_c_set+
+    lda #$2D
+    jmp !flag_c_done+
+!flag_c_set:
+    lda #$03                    // 'C' screen code
+!flag_c_done:
+    sta (zp_ptr_lo), y
+    iny
+    // ']'
+    lda #$5D
+    sta (zp_ptr_lo), y
 
     // Color: yellow
     lda #<(COLOR_RAM + 40*19)
@@ -690,5 +792,431 @@ render_help:
 help_text:
     .text "UP/DN:SCROLL S:STEP F1:RUN T:EXIT"
     .byte 0
+
+// ============================================================
+// asm_step_init
+// Initialise stepping mode: reset shadow registers, clear VIC,
+// set cursor to instruction 0, re-render.
+// Inputs:  none (assumes codegen has been run)
+// Clobbers: A, X, Y
+// ============================================================
+asm_step_init:
+    // Reset shadow registers
+    lda #0
+    sta zp_asm_reg_a
+    sta zp_asm_reg_x
+    sta zp_asm_reg_y
+    sta zp_asm_reg_flags
+    sta zp_asm_cursor
+    lda #$FF
+    sta zp_asm_reg_sp
+    // Clear VIC hardware
+    lda #COL_BLACK
+    sta VIC_BORDER
+    sta VIC_BG0
+    lda #0
+    sta VIC_SPR_ENA
+    // Re-render
+    jsr asm_view_render
+    rts
+
+// ============================================================
+// asm_step_execute_one
+// Execute one simulated instruction at zp_asm_cursor.
+// Reads metadata, dispatches to handler, advances cursor,
+// re-renders display, plays SID beep.
+// Inputs:  zp_asm_cursor = current instruction index
+// Clobbers: A, X, Y, zp_ptr, zp_cg_ptr, zp_gen_lo/hi
+// ============================================================
+asm_step_execute_one:
+    // Check bounds: if cursor >= inst_count, do nothing
+    lda zp_asm_cursor
+    cmp zp_asm_inst_count
+    bcc !in_bounds+
+    rts
+!in_bounds:
+
+    // Calculate metadata pointer: ASM_META_BUF + (cursor * 6)
+    lda zp_asm_cursor
+    asl                         // *2
+    sta zp_gen_lo
+    asl                         // *4
+    clc
+    adc zp_gen_lo               // *6
+    clc
+    adc #<ASM_META_BUF
+    sta zp_cg_ptr_lo
+    lda #>ASM_META_BUF
+    adc #0
+    sta zp_cg_ptr_hi
+
+    // Read mnemonic_id (byte 1)
+    ldy #1
+    lda (zp_cg_ptr_lo), y
+    tax                         // X = mnemonic_id
+
+    // Read source_block_idx (byte 0) for WAIT detection
+    ldy #0
+    lda (zp_cg_ptr_lo), y
+    sta zp_gen_hi               // zp_gen_hi = source_block_idx
+
+    // Read address_offset (byte 5) for operand lookup
+    ldy #5
+    lda (zp_cg_ptr_lo), y
+    sta zp_gen_lo               // zp_gen_lo = address_offset
+
+    // Dispatch via jump table indexed by mnemonic_id (X)
+    lda step_handler_lo, x
+    sta zp_ptr_lo
+    lda step_handler_hi, x
+    sta zp_ptr_hi
+    jmp (zp_ptr_lo)
+    // Handlers return by jumping to step_done
+
+// After handler: advance cursor, re-render, beep
+step_done:
+    inc zp_asm_cursor
+    jsr asm_view_render
+    jsr asm_step_beep
+    rts
+
+// Jump table for step handlers (15 entries)
+step_handler_lo:
+    .byte <step_sei, <step_cli, <step_rts
+    .byte <step_lda_imm, <step_lda_abs, <step_lda_zp
+    .byte <step_sta_abs, <step_sta_zp
+    .byte <step_ldx_imm, <step_ldy_imm
+    .byte <step_dex, <step_dec_zp
+    .byte <step_bne, <step_jsr, <step_jmp
+step_handler_hi:
+    .byte >step_sei, >step_cli, >step_rts
+    .byte >step_lda_imm, >step_lda_abs, >step_lda_zp
+    .byte >step_sta_abs, >step_sta_zp
+    .byte >step_ldx_imm, >step_ldy_imm
+    .byte >step_dex, >step_dec_zp
+    .byte >step_bne, >step_jsr, >step_jmp
+
+// ============================================================
+// Step Handlers
+// On entry: zp_gen_lo = address_offset into GEN_CODE_BUF
+//           zp_gen_hi = source_block_idx
+//           zp_cg_ptr_lo/hi = metadata pointer
+// Each handler jumps to step_done when finished.
+// ============================================================
+
+// --- SEI: Set I flag in shadow flags ---
+step_sei:
+    lda zp_asm_reg_flags
+    ora #$04                    // I flag = bit 2
+    sta zp_asm_reg_flags
+    jmp step_done
+
+// --- CLI: Clear I flag ---
+step_cli:
+    lda zp_asm_reg_flags
+    and #$FB                    // clear bit 2
+    sta zp_asm_reg_flags
+    jmp step_done
+
+// --- RTS: Stop stepping, return to ASM_VIEW ---
+step_rts:
+    // Play completion chime (3 ascending notes)
+    jsr asm_step_chime
+    // Don't advance cursor — signal caller to exit stepping
+    lda #STATE_ASM_VIEW
+    sta zp_state
+    // Re-render in view mode
+    jsr asm_view_render
+    rts                         // return directly, skip step_done
+
+// --- LDA #imm: load immediate into shadow A ---
+step_lda_imm:
+    // Operand is at GEN_CODE_BUF + address_offset + 1
+    ldx zp_gen_lo
+    inx                         // skip opcode byte
+    lda GEN_CODE_BUF, x
+    sta zp_asm_reg_a
+    jsr update_nz_flags
+    jmp step_done
+
+// --- LDA abs: load from absolute address ---
+step_lda_abs:
+    // Operand word at GEN_CODE_BUF + offset + 1 (lo) / + 2 (hi)
+    ldx zp_gen_lo
+    inx
+    lda GEN_CODE_BUF, x        // addr lo
+    sta zp_ptr_lo
+    inx
+    lda GEN_CODE_BUF, x        // addr hi
+    sta zp_ptr_hi
+    // Read from that address
+    ldy #0
+    lda (zp_ptr_lo), y
+    sta zp_asm_reg_a
+    jsr update_nz_flags
+    jmp step_done
+
+// --- LDA zp: load from zero page ---
+step_lda_zp:
+    ldx zp_gen_lo
+    inx                         // skip opcode
+    lda GEN_CODE_BUF, x        // ZP address
+    tax
+    lda $00, x                  // read from ZP
+    sta zp_asm_reg_a
+    jsr update_nz_flags
+    jmp step_done
+
+// --- STA abs: write shadow A to absolute address (live VIC write!) ---
+step_sta_abs:
+    ldx zp_gen_lo
+    inx
+    lda GEN_CODE_BUF, x        // addr lo
+    sta zp_ptr_lo
+    inx
+    lda GEN_CODE_BUF, x        // addr hi
+    sta zp_ptr_hi
+    ldy #0
+    lda zp_asm_reg_a
+    sta (zp_ptr_lo), y          // LIVE WRITE — VIC registers change!
+    jmp step_done
+
+// --- STA zp: write shadow A to zero page ---
+step_sta_zp:
+    ldx zp_gen_lo
+    inx
+    lda GEN_CODE_BUF, x        // ZP address
+    tax
+    lda zp_asm_reg_a
+    sta $00, x
+    jmp step_done
+
+// --- LDX #imm ---
+step_ldx_imm:
+    ldx zp_gen_lo
+    inx
+    lda GEN_CODE_BUF, x
+    sta zp_asm_reg_x
+    jsr update_nz_flags
+    jmp step_done
+
+// --- LDY #imm ---
+step_ldy_imm:
+    ldx zp_gen_lo
+    inx
+    lda GEN_CODE_BUF, x
+    sta zp_asm_reg_y
+    jsr update_nz_flags
+    jmp step_done
+
+// --- DEX: decrement shadow X ---
+step_dex:
+    // Check if this is part of a WAIT block — auto-skip entire loop
+    lda zp_gen_hi               // source_block_idx
+    cmp #BLOCK_WAIT
+    bne !normal_dex+
+    // WAIT block optimisation: skip DEX + BNE + DEC + BNE + DEC + BNE
+    // (6 instructions to skip, but we only skip 5 more since cursor
+    //  advances by 1 in step_done for DEX itself)
+    lda zp_asm_cursor
+    clc
+    adc #5                      // skip past the remaining WAIT loop instrs
+    sta zp_asm_cursor
+    // Set shadow X=0, clear Z=0 (loop finished)
+    lda #0
+    sta zp_asm_reg_x
+    lda zp_asm_reg_flags
+    ora #$02                    // set Z flag (result is zero)
+    sta zp_asm_reg_flags
+    jmp step_done
+!normal_dex:
+    dec zp_asm_reg_x
+    lda zp_asm_reg_x
+    jsr update_nz_flags
+    jmp step_done
+
+// --- DEC zp ---
+step_dec_zp:
+    // Also check WAIT optimisation
+    lda zp_gen_hi
+    cmp #BLOCK_WAIT
+    bne !normal_dec+
+    // Inside WAIT loop — auto-skip remaining (DEC $FE + BNE + DEC $FF + BNE)
+    // Skip 3 more instructions
+    lda zp_asm_cursor
+    clc
+    adc #3
+    sta zp_asm_cursor
+    jmp step_done
+!normal_dec:
+    ldx zp_gen_lo
+    inx
+    lda GEN_CODE_BUF, x        // ZP address
+    tax
+    dec $00, x
+    lda $00, x
+    jsr update_nz_flags
+    jmp step_done
+
+// --- BNE rel: if Z clear in shadow, auto-skip ---
+step_bne:
+    // For WAIT blocks, we've already auto-skipped, so this shouldn't
+    // normally be reached for WAIT. If it is, just skip.
+    lda zp_gen_hi
+    cmp #BLOCK_WAIT
+    beq !skip_bne+
+    // Normal BNE: check Z flag
+    lda zp_asm_reg_flags
+    and #$02                    // Z flag
+    bne !skip_bne+              // Z set = not taken, just advance
+    // Z clear = branch taken — but in stepping mode, auto-skip
+    // (we don't want infinite loops in the UI)
+!skip_bne:
+    jmp step_done
+
+// --- JSR abs: display annotation, auto-skip ---
+step_jsr:
+    // Just advance past it — JSR targets (like CHROUT) are
+    // opaque to the stepper. The annotation shows the address.
+    jmp step_done
+
+// --- JMP abs: check for loop-back ---
+step_jmp:
+    ldx zp_gen_lo
+    inx
+    lda GEN_CODE_BUF, x        // target lo
+    sta zp_ptr_lo
+    inx
+    lda GEN_CODE_BUF, x        // target hi
+    sta zp_ptr_hi
+    // Check if target is $5000 (loop-back)
+    lda zp_ptr_hi
+    cmp #>GEN_CODE_BUF
+    bne !not_loop+
+    lda zp_ptr_lo
+    cmp #<GEN_CODE_BUF
+    bne !not_loop+
+    // Loop-back: reset cursor to 0
+    lda #0
+    sta zp_asm_cursor
+    jsr asm_view_render
+    jsr asm_step_beep
+    rts                         // return directly, skip step_done increment
+!not_loop:
+    jmp step_done
+
+// ============================================================
+// update_nz_flags
+// Updates N and Z flags in shadow register based on value in A
+// Inputs:  A = value to check (also stored in relevant register)
+// Outputs: zp_asm_reg_flags updated
+// Clobbers: none (preserves A via stack)
+// ============================================================
+update_nz_flags:
+    pha
+    // Clear N and Z bits first
+    lda zp_asm_reg_flags
+    and #$7D                    // clear bit 7 (N) and bit 1 (Z)
+    sta zp_asm_reg_flags
+    pla
+    pha
+    // Check Z: if A == 0, set Z
+    bne !not_zero+
+    lda zp_asm_reg_flags
+    ora #$02
+    sta zp_asm_reg_flags
+    jmp !check_n+
+!not_zero:
+!check_n:
+    pla
+    pha
+    // Check N: if bit 7 set
+    and #$80
+    beq !not_neg+
+    lda zp_asm_reg_flags
+    ora #$80
+    sta zp_asm_reg_flags
+!not_neg:
+    pla
+    rts
+
+// ============================================================
+// asm_step_beep
+// Quick SID beep on voice 1. Different pitch by instruction type.
+// Clobbers: A
+// ============================================================
+.label SID_BASE = $D400
+asm_step_beep:
+    // Set volume
+    lda #$0F
+    sta SID_BASE + $18          // volume max
+    // Set ADSR: short attack, no sustain, short release
+    lda #$00
+    sta SID_BASE + $05          // AD: attack=0, decay=0
+    lda #$F0
+    sta SID_BASE + $06          // SR: sustain=15, release=0
+    // Frequency: mid tone ($1000)
+    lda #$00
+    sta SID_BASE + $00          // freq lo
+    lda #$10
+    sta SID_BASE + $01          // freq hi
+    // Gate on (pulse waveform)
+    lda #$41                    // pulse + gate
+    sta SID_BASE + $04          // control
+    // Pulse width
+    lda #$00
+    sta SID_BASE + $02
+    lda #$08
+    sta SID_BASE + $03          // pulse width = $0800
+    // Short delay (wait ~2000 cycles)
+    ldx #0
+!beep_delay:
+    inx
+    bne !beep_delay-
+    // Gate off
+    lda #$40                    // pulse, no gate
+    sta SID_BASE + $04
+    rts
+
+// ============================================================
+// asm_step_chime
+// 3-note ascending chime for RTS completion
+// Clobbers: A, X
+// ============================================================
+asm_step_chime:
+    // Note 1: low
+    lda #$08
+    sta SID_BASE + $01
+    lda #$41
+    sta SID_BASE + $04
+    ldx #0
+!c1:
+    inx
+    bne !c1-
+    lda #$40
+    sta SID_BASE + $04
+    // Note 2: mid
+    lda #$10
+    sta SID_BASE + $01
+    lda #$41
+    sta SID_BASE + $04
+    ldx #0
+!c2:
+    inx
+    bne !c2-
+    lda #$40
+    sta SID_BASE + $04
+    // Note 3: high
+    lda #$20
+    sta SID_BASE + $01
+    lda #$41
+    sta SID_BASE + $04
+    ldx #0
+!c3:
+    inx
+    bne !c3-
+    lda #$40
+    sta SID_BASE + $04
+    rts
 
 .assert "AsmView segment fits", * <= $7000, true
