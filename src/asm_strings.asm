@@ -181,4 +181,27 @@ render_hex_word:
 !:
     rts
 
+// ============================================================
+// mnemonic_color_table
+// Maps mnemonic_id (0-14) to syntax highlight colour.
+// This gives the BASE colour; the renderer overrides STA_ABS
+// to SYN_VIC_IO when source block is SET BORDER/BG/SPRITE.
+// ============================================================
+mnemonic_color_table:
+    .byte SYN_SYSTEM      // MN_SEI       (0)
+    .byte SYN_SYSTEM      // MN_CLI       (1)
+    .byte SYN_SYSTEM      // MN_RTS       (2)
+    .byte SYN_DEFAULT     // MN_LDA_IMM   (3)
+    .byte SYN_DEFAULT     // MN_LDA_ABS   (4)
+    .byte SYN_DEFAULT     // MN_LDA_ZP    (5)
+    .byte SYN_DEFAULT     // MN_STA_ABS   (6) — overridden to cyan for VIC writes
+    .byte SYN_DEFAULT     // MN_STA_ZP    (7)
+    .byte SYN_DEFAULT     // MN_LDX_IMM   (8)
+    .byte SYN_DEFAULT     // MN_LDY_IMM   (9)
+    .byte SYN_DEFAULT     // MN_DEX       (10)
+    .byte SYN_DEFAULT     // MN_DEC_ZP    (11)
+    .byte SYN_FLOW        // MN_BNE_REL   (12)
+    .byte SYN_KERNAL      // MN_JSR_ABS   (13)
+    .byte SYN_FLOW        // MN_JMP_ABS   (14)
+
 .assert "AsmStrings segment fits", * <= $7400, true

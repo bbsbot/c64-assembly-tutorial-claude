@@ -17,6 +17,7 @@ asm_view_render:
     jsr render_title
     jsr render_header
     jsr render_code_area
+    jsr colorize_code_area
     jsr render_registers
     jsr render_block_annotation
     jsr render_help
@@ -300,6 +301,167 @@ render_disasm_line:
 
     // Restore instruction index
     ldy zp_gen_hi
+    rts
+
+// ============================================================
+// colorize_code_area
+// Applies syntax highlighting colours to COLOR_RAM rows 2-18
+// Walks metadata starting at zp_asm_cursor, colours each line
+// based on mnemonic category. First visible line gets green bg.
+// Inputs:  zp_asm_cursor, zp_asm_inst_count
+// Clobbers: A, X, Y, zp_ptr_lo/hi, zp_cg_ptr_lo/hi
+// ============================================================
+colorize_code_area:
+    // Color RAM pointer → row 2
+    lda #<(COLOR_RAM + 80)          // row 2 = 40*2 = 80
+    sta zp_ptr_lo
+    lda #>(COLOR_RAM + 80)
+    sta zp_ptr_hi
+
+    // Metadata pointer: ASM_META_BUF + (zp_asm_cursor * 6)
+    lda zp_asm_cursor
+    asl                             // *2
+    sta zp_gen_lo
+    asl                             // *4
+    clc
+    adc zp_gen_lo                   // *6
+    clc
+    adc #<ASM_META_BUF
+    sta zp_cg_ptr_lo
+    lda #>ASM_META_BUF
+    adc #0
+    sta zp_cg_ptr_hi
+
+    // Walk up to 17 lines
+    ldx #0                          // line counter
+    ldy zp_asm_cursor               // instruction index
+!color_line_loop:
+    cpy zp_asm_inst_count           // past end?
+    bcc !color_have_inst+
+    jmp !color_pad_remaining+
+!color_have_inst:
+
+    // Read mnemonic_id (byte 1) and source_block_idx (byte 0)
+    sty zp_gen_hi                   // save instruction index
+    ldy #1
+    lda (zp_cg_ptr_lo), y          // A = mnemonic_id
+    tay                             // Y = mnemonic_id (for table lookup)
+
+    // Look up base colour from table
+    lda AsmStrings.mnemonic_color_table, y
+
+    // Check for VIC I/O override: if mnemonic is STA_ABS (6),
+    // check source block — BORDER(0), BG(1), SPRITE(3) → cyan
+    cpy #MN_STA_ABS
+    bne !no_vic_override+
+    pha                             // save base colour
+    ldy #0
+    lda (zp_cg_ptr_lo), y          // A = source_block_idx
+    cmp #BLOCK_SET_BORDER
+    beq !is_vic+
+    cmp #BLOCK_SET_BG
+    beq !is_vic+
+    cmp #BLOCK_SHOW_SPRITE
+    beq !is_vic+
+    pla                             // not VIC — restore base colour
+    jmp !no_vic_override+
+!is_vic:
+    pla                             // discard base colour
+    lda #SYN_VIC_IO                 // use cyan
+!no_vic_override:
+
+    // Also check: LDA_IMM before a VIC STA should also be cyan
+    // We detect this by checking source_block_idx for VIC blocks
+    // when mnemonic is LDA_IMM
+    pha                             // save current colour
+    tya                             // Y still has mnemonic_id from before
+    // Actually Y was clobbered. Re-read mnemonic_id.
+    ldy #1
+    lda (zp_cg_ptr_lo), y
+    cmp #MN_LDA_IMM
+    bne !no_lda_vic+
+    ldy #0
+    lda (zp_cg_ptr_lo), y          // source_block_idx
+    cmp #BLOCK_SET_BORDER
+    beq !lda_is_vic+
+    cmp #BLOCK_SET_BG
+    beq !lda_is_vic+
+    cmp #BLOCK_SHOW_SPRITE
+    beq !lda_is_vic+
+    jmp !no_lda_vic+
+!lda_is_vic:
+    pla                             // discard previous colour
+    lda #SYN_VIC_IO                 // use cyan for LDA paired with VIC write
+    jmp !apply_colour+
+!no_lda_vic:
+    pla                             // restore colour
+
+!apply_colour:
+    // If this is line 0 (first visible line = cursor), use green
+    cpx #0
+    bne !not_cursor_line+
+    lda #SYN_CURSOR_BG
+!not_cursor_line:
+
+    // Fill 40 bytes of COLOR_RAM for this row
+    pha                             // save colour
+    ldy #0
+!fill_color:
+    sta (zp_ptr_lo), y
+    iny
+    cpy #40
+    bne !fill_color-
+    pla                             // restore colour (for stack balance)
+
+    // Advance COLOR_RAM pointer by 40
+    lda zp_ptr_lo
+    clc
+    adc #40
+    sta zp_ptr_lo
+    bcc !+
+    inc zp_ptr_hi
+!:
+
+    // Advance metadata pointer by 6
+    lda zp_cg_ptr_lo
+    clc
+    adc #6
+    sta zp_cg_ptr_lo
+    bcc !+
+    inc zp_cg_ptr_hi
+!:
+
+    ldy zp_gen_hi                   // restore instruction index
+    iny                             // next instruction
+    inx                             // next line
+    cpx #17
+    beq !color_done+
+    jmp !color_line_loop-
+!color_done:
+    rts
+
+!color_pad_remaining:
+    // Remaining empty lines: dark grey
+    lda #COL_DK_GREY
+!pad_color_loop:
+    ldy #0
+!pad_fill:
+    sta (zp_ptr_lo), y
+    iny
+    cpy #40
+    bne !pad_fill-
+    // Advance pointer by 40
+    lda zp_ptr_lo
+    clc
+    adc #40
+    sta zp_ptr_lo
+    bcc !+
+    inc zp_ptr_hi
+!:
+    lda #COL_DK_GREY
+    inx
+    cpx #17
+    bne !pad_color_loop-
     rts
 
 // ============================================================

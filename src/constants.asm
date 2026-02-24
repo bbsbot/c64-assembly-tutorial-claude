@@ -148,6 +148,16 @@
 .label COL_LT_BLUE    = 14
 .label COL_LT_GREY    = 15
 
+// ------------------------------------------------------------
+// Syntax highlighting colours (Assembly View)
+// ------------------------------------------------------------
+.label SYN_DEFAULT    = COL_LT_GREY   // most instructions
+.label SYN_SYSTEM     = COL_PURPLE    // SEI, CLI, RTS
+.label SYN_VIC_IO     = COL_CYAN      // writes to VIC-II ($D0xx)
+.label SYN_KERNAL     = COL_YELLOW    // JSR to Kernal
+.label SYN_FLOW       = COL_RED       // BNE, JMP
+.label SYN_CURSOR_BG  = COL_GREEN     // cursor line highlight
+
 // Screen code helpers (screen RAM uses different encoding than PETSCII)
 // Screen code for uppercase A = $01  (PETSCII $41 minus $40)
 // Screen code for space      = $20
