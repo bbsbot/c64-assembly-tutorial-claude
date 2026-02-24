@@ -15,8 +15,8 @@
 //   $6000  assembly metadata buffer (80 instructions × 6 bytes)
 //   $6800  asm_view.asm (assembly view rendering)
 //   $7000  asm_strings.asm (mnemonic strings, hex conversion)
-//   $7400  splash.asm (splash screen display routine)
-//   $8000  splash_data.asm (bitmap data in VIC bank 2)
+//   $7400  splash.asm (text splash screen + SID init)
+//   $9000  sid_data.asm (SID music binary, $9000-$CFFF)
 // ============================================================
 
 // Build with :SKIP_SPLASH=1 to disable splash (for headless tests)
@@ -169,6 +169,11 @@ main_loop:
     lda $D012
     cmp #250
     bne !wait_raster-
+
+    // Keep SID music playing (skipped in headless test builds)
+    .if (SKIP_SPLASH == 0) {
+        jsr SID_PLAY
+    }
 
     inc zp_frame
 
@@ -651,5 +656,5 @@ do_run:
 #import "asm_view.asm"
 .if (SKIP_SPLASH == 0) {
     #import "splash.asm"
-    #import "splash_data.asm"
+    #import "sid_data.asm"
 }

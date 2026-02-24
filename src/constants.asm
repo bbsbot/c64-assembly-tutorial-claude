@@ -161,10 +161,13 @@
 // ------------------------------------------------------------
 // Splash screen constants
 // ------------------------------------------------------------
-.label SPLASH_BG_COLOR   = COL_BLACK   // global bg color (from converter)
 .label SPLASH_FRAMES     = 150         // ~3 sec at 50 Hz PAL
 
-// Additional VIC-II / CIA registers for bitmap mode
+// SID music addresses (Swamp Sollies by Banana)
+.label SID_INIT          = $C000       // call with A=0 for song 1
+.label SID_PLAY          = $C475       // call once per frame
+
+// Additional VIC-II / CIA registers
 .label VIC_D011          = $D011       // screen control register 1
 .label VIC_D016          = $D016       // screen control register 2
 .label VIC_D018          = $D018       // memory pointers

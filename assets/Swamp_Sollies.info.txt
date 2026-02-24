@@ -1,0 +1,6 @@
+Title: Swamp Sollies
+Author: Christof Mühlan (Banana)
+Released: 1987 The Electronic Knights
+Load Address: $9000
+Init Address: $C000
+Play Address: $C475
