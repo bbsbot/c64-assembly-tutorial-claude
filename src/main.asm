@@ -49,15 +49,38 @@ nmi_handler:
     rti
 
 // ============================================================
+// loading_irq — border color cycle during startup
+// Increments border color each frame so user sees activity.
+// Restored to default Kernal IRQ ($EA31) after init completes.
+// ============================================================
+loading_irq:
+    inc VIC_BORDER
+    jmp $EA31               // chain to Kernal IRQ handler
+
+// ============================================================
 // start — init sequence
 // ============================================================
 start:
+    // Install border color-cycle IRQ so user sees activity during init
+    sei
+    lda #<loading_irq
+    sta $0314
+    lda #>loading_irq
+    sta $0315
+    cli
+
     // Show splash screen (unless SKIP_SPLASH=1)
     .if (SKIP_SPLASH == 0) {
         jsr Splash.splash_show
     }
 
     sei                     // disable IRQ during init
+
+    // Remove loading IRQ — restore default Kernal IRQ
+    lda #<$EA31
+    sta $0314
+    lda #>$EA31
+    sta $0315
 
     // 1. Clear screen and color RAM
     jsr UIRender.ui_clear_screen
