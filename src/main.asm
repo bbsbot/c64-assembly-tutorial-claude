@@ -16,6 +16,7 @@
 //   $6800  asm_view.asm (assembly view rendering)
 //   $7000  asm_strings.asm (mnemonic strings, hex conversion)
 //   $7400  splash.asm (text splash screen + SID init)
+//   $7800  matrix_rain.asm (matrix rain transition effect)
 //   $9000  sid_data.asm (SID music binary, $9000-$CFFF)
 // ============================================================
 
@@ -290,7 +291,7 @@ state_palette:
     sta zp_asm_cursor       // reset cursor to top
     lda #STATE_ASM_VIEW
     sta zp_state
-    jsr AsmView.asm_view_render
+    jsr MatrixRain.matrix_rain_transition
     jmp main_loop
 !no_t_pal:
 
@@ -391,7 +392,7 @@ state_program:
     sta zp_asm_cursor
     lda #STATE_ASM_VIEW
     sta zp_state
-    jsr AsmView.asm_view_render
+    jsr MatrixRain.matrix_rain_transition
     jmp main_loop
 !no_t_pgm:
 
@@ -475,7 +476,7 @@ state_edit_param:
     sta zp_asm_cursor
     lda #STATE_ASM_VIEW
     sta zp_state
-    jsr AsmView.asm_view_render
+    jsr MatrixRain.matrix_rain_transition
     jmp main_loop
 !no_t_edit:
 
@@ -654,6 +655,7 @@ do_run:
 #import "program_store.asm"
 #import "asm_strings.asm"
 #import "asm_view.asm"
+#import "matrix_rain.asm"
 .if (SKIP_SPLASH == 0) {
     #import "splash.asm"
     #import "sid_data.asm"

@@ -35,6 +35,8 @@
 .label zp_asm_reg_sp      = $19   // shadow register SP
 .label zp_asm_reg_flags   = $1A   // shadow register flags
 .label zp_asm_prev_state  = $1B   // state before entering asm view
+.label zp_rain_active     = $1C   // matrix rain: columns still animating
+.label zp_rain_freq_hi    = $1D   // matrix rain: SID freq hi sweep
 
 // Scratch ZP for generated code only (never used by tutor)
 .label zp_gen_lo      = $FE
@@ -72,6 +74,8 @@
 .label SLOT_ARRAY     = $4000  // 48 bytes: 16 slots × 3 bytes
 .label GEN_CODE_BUF   = $5000  // runtime generated code lands here
 .label ASM_META_BUF   = $6000  // metadata buffer: 80 instructions × 6 bytes = 480 bytes
+.label SHADOW_SCREEN  = $6200  // shadow screen buffer for matrix rain (1000 bytes)
+.label RAIN_COL_STATE = $65E8  // per-column rain state (40 cols × 4 bytes = 160)
 
 // ------------------------------------------------------------
 // State IDs
