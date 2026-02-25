@@ -218,12 +218,12 @@
 
 <!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
 <header>
-  <div class="badge">KickAss&nbsp;v5.25 &nbsp;|&nbsp; VICE x64sc &nbsp;|&nbsp; 6502 Assembly</div>
+  <div class="badge">KickAss&nbsp;v5.25 &nbsp;|&nbsp; VICE x64sc &nbsp;|&nbsp; 6502 Assembly &nbsp;|&nbsp; Built with Claude Code</div>
   <h1>C64 <span class="accent">Block Tutor</span></h1>
   <p class="subtitle">
     A Scratch-like block programming interface for the Commodore 64 —
     compose visual blocks with a joystick, hit&nbsp;F1, and real 6502 machine
-    code runs on the C64 itself.
+    code runs on the C64 itself. Built entirely with AI pair-programming.
   </p>
 </header>
 
@@ -286,6 +286,34 @@
   </p>
 </section>
 
+<!-- ═════════════════════════ ASSEMBLY VIEW ═════════════════════════ -->
+<section>
+  <h2>Assembly View</h2>
+  <p>
+    Press <strong>T</strong> to toggle into <strong>Assembly View</strong> — a live
+    disassembly of the generated machine code. The transition is accompanied by a
+    <strong>Matrix Rain</strong> effect: assembly characters cascade down the screen
+    column-by-column with a descending SID sawtooth sweep.
+  </p>
+
+  <h3>Features</h3>
+  <ul>
+    <li><strong>Syntax highlighting</strong> — colour-coded by instruction category: system calls (purple), VIC-II I/O (cyan), flow control (red), Kernal calls (yellow)</li>
+    <li><strong>Single-step execution</strong> — press <strong>S</strong> to execute one instruction at a time with live register display (<code>A X Y SP [NV-BDIZC]</code>) and SID audio feedback</li>
+    <li><strong>Matrix Rain transition</strong> — 40-column digital rain with staggered delays, random characters, white/green colour trail, and SID voice 2 sweep</li>
+    <li><strong>Scrollable view</strong> — UP/DOWN joystick scrolls through all generated instructions with cursor line highlighted in green</li>
+    <li><strong>WAIT auto-skip</strong> — the stepper detects WAIT busy-loops and fast-forwards through them instead of stepping 768&times;256 iterations</li>
+  </ul>
+
+  <div class="callout">
+    <strong>How stepping works:</strong> The step engine reads a 6-byte metadata
+    record per instruction (mnemonic ID, source block, address offset) and
+    dispatches through a 15-entry jump table. VIC-II writes happen live — when
+    you step through <code>STA $D020</code>, the border colour changes on-screen
+    in real time.
+  </div>
+</section>
+
 <!-- ═════════════════════════ ARCHITECTURE ═════════════════════════ -->
 <section>
   <h2>Architecture</h2>
@@ -296,20 +324,29 @@
     show labels by name:
   </p>
   <pre><code><span class="op">$0801</span>  BASIC stub (SYS entry point)
-<span class="op">$0810</span>  <span class="lbl">main.asm</span>        — init, main loop, state machine
-<span class="op">$1000</span>  <span class="lbl">ui_render.asm</span>   — screen-code drawing routines
-<span class="op">$1800</span>  <span class="lbl">input.asm</span>       — joystick edge detection + GETIN
-<span class="op">$2000</span>  <span class="lbl">sprite_data.asm</span> — 64-byte robot bitmap (64-byte aligned → ptr=128)
-<span class="op">$2800</span>  <span class="lbl">blocks_data.asm</span> — block name/param tables
-<span class="op">$3000</span>  <span class="lbl">codegen.asm</span>     — code-generation routines
-<span class="op">$3800</span>  <span class="lbl">strings.asm</span>     — UI strings in screen codes
+<span class="op">$0810</span>  <span class="lbl">main.asm</span>         — init, main loop, 6-state machine
+<span class="op">$1000</span>  <span class="lbl">ui_render.asm</span>    — screen-code drawing routines
+<span class="op">$1800</span>  <span class="lbl">input.asm</span>        — joystick edge detection + GETIN
+<span class="op">$2000</span>  <span class="lbl">sprite_data.asm</span>  — 64-byte robot bitmap (64-byte aligned → ptr=128)
+<span class="op">$2800</span>  <span class="lbl">blocks_data.asm</span>  — block name/param tables
+<span class="op">$3000</span>  <span class="lbl">codegen.asm</span>      — code-generation routines
+<span class="op">$3800</span>  <span class="lbl">strings.asm</span>      — UI strings in screen codes
 <span class="op">$4000</span>  <span class="lbl">program_store.asm</span> — 16-slot × 3-byte array + access helpers
-<span class="op">$5000</span>  <em>(runtime)</em>       — generated machine-code buffer</code></pre>
+<span class="op">$5000</span>  <em>(runtime)</em>        — generated machine-code buffer
+<span class="op">$6000</span>  <span class="lbl">asm_view.asm</span>     — metadata buffer (80 instr × 6 bytes)
+<span class="op">$6800</span>  <span class="lbl">asm_view.asm</span>     — rendering + step-through engine
+<span class="op">$7000</span>  <span class="lbl">asm_strings.asm</span>  — mnemonic tables + hex conversion
+<span class="op">$7400</span>  <span class="lbl">splash.asm</span>       — splash screen + SID music
+<span class="op">$7800</span>  <span class="lbl">matrix_rain.asm</span>  — rain transition effect
+<span class="op">$9000</span>  <span class="lbl">sid_data.asm</span>     — SID music binary ($9000–$CFFF)</code></pre>
 
   <h3>State machine</h3>
-  <pre><code><span class="lbl">STATE_PALETTE    (0)</span>  <span class="cm">; joystick UP/DN moves palette cursor; FIRE adds block</span>
-<span class="lbl">STATE_PROGRAM    (1)</span>  <span class="cm">; joystick UP/DN moves program cursor; FIRE → edit</span>
-<span class="lbl">STATE_EDIT_PARAM (2)</span>  <span class="cm">; LEFT/RIGHT cycles param; FIRE confirms</span></code></pre>
+  <pre><code><span class="lbl">STATE_PALETTE      (0)</span>  <span class="cm">; joystick UP/DN moves palette cursor; FIRE adds block</span>
+<span class="lbl">STATE_PROGRAM      (1)</span>  <span class="cm">; joystick UP/DN moves program cursor; FIRE → edit</span>
+<span class="lbl">STATE_EDIT_PARAM   (2)</span>  <span class="cm">; LEFT/RIGHT cycles param; FIRE confirms</span>
+<span class="lbl">STATE_RUNNING      (3)</span>  <span class="cm">; transient; set during JSR $5000, cleared on return</span>
+<span class="lbl">STATE_ASM_VIEW     (4)</span>  <span class="cm">; scrollable disassembly; S → stepping; T → blocks</span>
+<span class="lbl">STATE_ASM_STEPPING (5)</span>  <span class="cm">; single-step with live registers + SID beep</span></code></pre>
 </section>
 
 <!-- ═════════════════════════ CODE HIGHLIGHTS ═════════════════════════ -->
@@ -515,6 +552,32 @@ write_byte(s, <span class="num">0x10</span>, <span class="num">0x85</span>)</cod
     After injection the harness polls <code>zp_state</code> until the main
     loop has processed the input and returned to its idle condition, then
     reads the relevant hardware registers to assert correctness.
+  </p>
+</section>
+
+<!-- ═════════════════════════ AI PAIR-PROGRAMMING ═════════════════════════ -->
+<section>
+  <h2>Built with AI Pair-Programming</h2>
+  <p>
+    This entire project was built using <strong>Claude Code</strong> as an AI
+    pair-programmer over the course of one week (Feb 18–24, 2026). The AI agent
+    was guided by 18 expert knowledge modules ("skills") covering everything from
+    KickAss assembler syntax to VIC-II raster timing to headless VICE testing.
+  </p>
+  <p>
+    Three of those skills were created during this project and contributed back
+    to the upstream <a href="https://github.com/bbsbot/ultimate-64-dev">ultimate-64-dev</a>
+    repository:
+  </p>
+  <ul>
+    <li><strong>Implementation Workflow</strong> — Git workflow safeguards that prevent coding without a plan, working on main, or hallucinating file references</li>
+    <li><strong>Session Management</strong> — Budget-aware Pomodoro pacing with rate-limit detection and exponential backoff</li>
+    <li><strong>VICE Automation</strong> — Headless testing with golden screenshots, pixel-diff, and CI integration</li>
+  </ul>
+  <p>
+    For the full story — rate limits at 11 PM, KickAss syntax gotchas, the
+    splash screen memory conflict, and the Matrix Rain finale — read the
+    <a href="https://github.com/bbsbot/c64-assembly-tutorial-claude/blob/main/docs/HISTORY.md">project history</a>.
   </p>
 </section>
 

@@ -2,11 +2,12 @@
 
 # C64 Block Tutor
 
-> A Scratch-like block-programming interface for the Commodore 64 — compose a program with a joystick, press F1, and real 6502 machine code assembles itself and executes inside the running C64.
+> A Scratch-like block-programming interface for the Commodore 64 — compose a program with a joystick, press F1, and real 6502 machine code assembles itself and executes inside the running C64. Built entirely with AI pair-programming using [Claude Code](https://claude.ai/code).
 
 * [Online write-up with demo video](https://bbsbot.github.io/c64-assembly-tutorial-claude)
 * [PDF slides describing the project goals](docs/C64_Visual_Assembly.pdf)
 * [Video overview of project goals](https://bbsbot.github.io/c64-assembly-tutorial-claude/C64__Joystick_to_AI_Co-Pilot.mp4)
+* [Project history — the full story of building this](docs/HISTORY.md)
 
 ---
 
@@ -24,6 +25,19 @@ The C64 Block Tutor is a native Commodore 64 program written entirely in **6502 
 | **LOOP BACK** | *(none)* | Jumps back to `$5000`; stop with RESTORE |
 
 Pressing **F1** walks the slot array, emits one block's worth of 6502 opcodes per entry, appends `CLI / RTS`, and jumps to `$5000` — executing the freshly assembled program right inside the running C64.
+
+### Assembly View
+
+Press **T** to toggle into **Assembly View** — a live disassembly of the generated machine code with:
+
+- **Syntax highlighting** — colour-coded by instruction category (system calls in purple, VIC-II I/O in cyan, flow control in red, Kernal calls in yellow)
+- **Single-step execution** — press **S** to execute one instruction at a time with live register display and SID audio feedback
+- **Matrix Rain transition** — entering Assembly View triggers a column-by-column digital rain animation with a descending SID sawtooth sweep
+- **Scrollable view** — UP/DOWN joystick scrolls through all generated instructions
+
+### Splash Screen
+
+On startup, a text-mode splash screen displays project credits while playing **"Swamp Sollies" by Banana** through the SID chip, with an animated border colour-cycle IRQ.
 
 ---
 
@@ -73,15 +87,17 @@ python test_interactive.py
 bash scripts/run_and_record.sh
 ```
 
-### Joystick controls (inside the C64 program)
+### Controls
 
 | Input | Action |
 |---|---|
-| **UP / DOWN** | Move cursor |
+| **UP / DOWN** | Move cursor / scroll in Assembly View |
 | **LEFT / RIGHT** | Switch panels / adjust parameter in edit mode |
-| **FIRE** | Add block / confirm edit |
+| **FIRE** | Add block / confirm edit / step (in stepping mode) |
 | **F1** | Run the program |
 | **F3** | Clear all blocks |
+| **T** | Toggle Assembly View (with Matrix Rain transition) |
+| **S** | Enter single-step mode (in Assembly View) |
 | **DEL** | Remove the selected block |
 | **RESTORE** | Emergency stop (NMI handler) |
 
@@ -92,7 +108,7 @@ bash scripts/run_and_record.sh
 ```
 /src
   constants.asm       — ZP variables, VIC-II/CIA/Kernal addresses, block/state IDs
-  main.asm            — BASIC upstart, NMI handler, init, main loop, state machine
+  main.asm            — BASIC upstart, NMI handler, init, main loop, 6-state machine
   ui_render.asm       — Screen-code drawing (panels, cursor, status bar)
   input.asm           — Joystick edge-detection + GETIN wrapper
   sprite_data.asm     — 64-byte robot sprite bitmap (64-byte aligned → ptr = 128)
@@ -100,14 +116,21 @@ bash scripts/run_and_record.sh
   codegen.asm         — Walk slots, emit 6502 opcodes to $5000, JSR $5000
   strings.asm         — UI strings (title, help row, value labels)
   program_store.asm   — 16-slot × 3-byte array + stride table + access helpers
+  asm_view.asm        — Assembly view rendering, syntax highlighting, step-through engine
+  asm_strings.asm     — Mnemonic string tables, hex conversion, colour mapping
+  matrix_rain.asm     — Matrix rain column-by-column transition effect + SID sweep
+  splash.asm          — Text splash screen with SID music playback
+  sid_data.asm        — SID music binary (Swamp Sollies by Banana, $9000-$CFFF)
 
 /build               — Compiled .prg, .sym, test screenshots (git-ignored)
 /bin                 — KickAss.jar
-/docs                — index.html write-up + test_recording_vice.mp4
+/docs                — index.html write-up, plans, presentations, HISTORY.md
 /scripts
   run_and_record.sh  — Run test suite + record desktop with ffmpeg
   session-timer.sh   — Pacing timer for AI-assisted development sessions
-/skills              — Expert knowledge modules (for AI pair-programming)
+  convert_splash.py  — Python image converter for multicolor bitmap splash
+  strip_sid_header.py — Strip PSID header from .sid files for raw binary
+/.claude/commands    — Expert knowledge modules (AI pair-programming skills)
 ```
 
 ### Memory map
@@ -115,15 +138,22 @@ bash scripts/run_and_record.sh
 | Address | Module |
 |---|---|
 | `$0801` | BASIC Upstart stub (`SYS 2066`) |
-| `$0810` | `main.asm` — init, main loop, state machine |
+| `$0810` | `main.asm` — init, main loop, 6-state machine |
 | `$1000` | `ui_render.asm` |
 | `$1800` | `input.asm` |
 | `$2000` | `sprite_data.asm` (64-byte aligned; pointer byte = 128) |
 | `$2800` | `blocks_data.asm` |
 | `$3000` | `codegen.asm` |
 | `$3800` | `strings.asm` |
-| `$4000` | `program_store.asm` — slot array (16 slots × 3 bytes = 48 bytes) |
+| `$4000` | `program_store.asm` — slot array (16 slots × 3 bytes) |
 | `$5000` | *(runtime)* — generated machine-code buffer |
+| `$6000` | `asm_view.asm` — metadata buffer (80 instructions × 6 bytes) |
+| `$6200` | Shadow screen buffer (matrix rain pre-render) |
+| `$6800` | `asm_view.asm` — rendering + step-through engine |
+| `$7000` | `asm_strings.asm` — mnemonic tables + hex conversion |
+| `$7400` | `splash.asm` — splash screen routine |
+| `$7800` | `matrix_rain.asm` — rain transition effect |
+| `$9000` | `sid_data.asm` — SID music binary ($9000–$CFFF) |
 
 ---
 
@@ -132,10 +162,12 @@ bash scripts/run_and_record.sh
 ### State machine
 
 ```
-STATE_PALETTE (0)    — UP/DN moves palette cursor; FIRE adds block; RIGHT → program panel
-STATE_PROGRAM (1)    — UP/DN moves program cursor; FIRE → edit; LEFT → palette panel; F1 → run
-STATE_EDIT_PARAM (2) — LEFT/RIGHT cycles param value; FIRE confirms and returns to program
-STATE_RUNNING (3)    — transient; set during JSR $5000, cleared on return
+STATE_PALETTE      (0) — UP/DN moves palette cursor; FIRE adds block; RIGHT → program panel
+STATE_PROGRAM      (1) — UP/DN moves program cursor; FIRE → edit; LEFT → palette; F1 → run
+STATE_EDIT_PARAM   (2) — LEFT/RIGHT cycles param value; FIRE confirms
+STATE_RUNNING      (3) — transient; set during JSR $5000, cleared on return
+STATE_ASM_VIEW     (4) — scrollable disassembly; S → stepping; T → return to blocks
+STATE_ASM_STEPPING (5) — single-step execution with live registers + SID beep
 ```
 
 ### Slot array (`$4000`)
@@ -225,23 +257,20 @@ python test_interactive.py --no-warp  # real C64 speed (use with run_and_record.
 | 12 | WAIT codegen | SEI prefix; `outer_hi = n×3`; CLI/RTS at correct offsets |
 | 13 | LOOP BACK execution | Break at `$5000`; inject stop-flag; tutor returns to PALETTE |
 
-The harness injects input by writing to ZP via the VICE remote monitor:
+---
 
-```python
-write_byte(s, 0x08, 0x02)   # zp_joy_edge: JOY_DOWN bit → cursor moves down
-write_byte(s, 0x10, 0x85)   # zp_last_key: $85 = F1 → trigger codegen
-```
+## AI Pair-Programming: The Skills System
 
-After injection it polls `zp_state` until the main loop returns to idle, then reads hardware registers to assert the result.
+This project was built using **Claude Code** as an AI pair-programmer. The `.claude/commands/` directory contains 18 expert knowledge modules ("skills") that teach the AI agent C64-specific patterns. These skills were forked from [ultimate-64-dev](https://github.com/bbsbot/ultimate-64-dev) and extended during development.
 
-### Recording a test run
+**Skills contributed back upstream:**
+- `collaboration/implementation-workflow.md` — Git workflow safeguards for agentic development
+- `session-management/SKILL.md` — Budget-aware session pacing with Pomodoro cadence
+- `testing/vice-automation.md` — Headless VICE testing, golden screenshots, CI integration
+- `provisioning/bootstrap.md` — Windows-specific VICE installation workarounds (improved)
+- `provisioning/doctor.md` — Test pipeline health checks (improved)
 
-```bash
-bash scripts/run_and_record.sh
-# → build/test_recording.mp4  (full-desktop fMP4)
-```
-
-The script uses `ffmpeg gdigrab` for capture and `-movflags frag_keyframe+empty_moov` so the file is valid even if ffmpeg is terminated without a graceful shutdown (no moov-atom-at-end required).
+For the full story of how AI pair-programming shaped this project, see [docs/HISTORY.md](docs/HISTORY.md).
 
 ---
 
@@ -262,15 +291,8 @@ The script uses `ffmpeg gdigrab` for capture and `-movflags frag_keyframe+empty_
 - Long branches (emitter bodies > ±127 bytes) — use `bne !skip+ : jmp target` or a ZP jump table.
 - Sprite data must be **exactly 64 bytes** (21 rows × 3 = 63, plus 1 padding byte).
 - Cross-file constants must live in `constants.asm`, not inside a namespaced file.
-
----
-
-## Known Gaps / Future Work
-
-- **WAIT timing test:** a real-time test that measures wall-clock duration of the generated busy-loop and verifies it runs within ±10% of N seconds (requires `--no-warp` and `time.sleep` in the harness).
-- **More blocks:** `SET COLOR` (text colour via colour RAM), `PLAY NOTE` (SID register writes), `CLEAR SCREEN`.
-- **Save/load:** Persist slot arrays to a `.d64` disk image via the Kernal `OPEN/SAVE` routines.
-- **Joystick port 1:** Currently reads port 2 only (`$DC00`); add port 1 (`$DC01`) as an alternative.
+- `-odir build/` resolves relative to the *source file*, not CWD — use `-o build/main.prg` instead.
+- `-symbolfile` writes `.sym` next to the source — move manually: `mv src/main.sym build/`.
 
 ---
 
@@ -280,6 +302,7 @@ The script uses `ffmpeg gdigrab` for capture and `-movflags frag_keyframe+empty_
 |---|---|
 | **KickAss v5.25** (`bin/KickAss.jar`) | Assembler — macros, scripting, `.sym` output |
 | **VICE x64sc** | Cycle-accurate PAL C64 emulator |
+| **Claude Code** | AI pair-programmer with C64 expert skills |
 | **ffmpeg** (gdigrab) | Screen recording for test runs |
 | **Python 3** + TCP socket | Interactive test harness via VICE remote monitor |
 | **PowerShell** | Pixel-diff comparison in `test.sh` |
